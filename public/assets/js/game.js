@@ -20,18 +20,26 @@ class Game extends Phaser.Scene{
 
         this.cfg = {
             graph:{ scene:{ width: 2560,height: 1600 }, window:{width: 1680,height: 1050}},
-            cooldown:3000,
-            baseSpeed:3000
+            cooldown:30000,
+            baseSpeed:3000,
+            maxobject:10
         }
         this.engine.createScenario();
+
+        
         
         //CREATE INICIAL OBJECT
         this.engine.createInitialObject();
         this.input.on('pointermove', this.pointermove);
+
+        this.input.keyboard.on('keydown-SPACE', () => {
+            this.engine.split();
+        });
     }
     update(){
         this.engine.updateText();
         this.engine.zoom();
+        this.engine.checkCollisions();
     }
     pointermove(pointer){
         var point = scene.cameras.main.getWorldPoint(pointer.x, pointer.y);

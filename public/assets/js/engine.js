@@ -13,14 +13,18 @@ export class Engine{
         this.scene.memory.objects.add(this.createObject(200,200,50,this.scene.cfg.cooldown));
         this.scene.memory.objects.add(this.createObject(300,400,50,this.scene.cfg.cooldown));
         this.scene.memory.objects.add(this.createObject(400,300,50,this.scene.cfg.cooldown));
+        this.scene.memory.objects.add(this.createObject(500,700,50,this.scene.cfg.cooldown));
+        this.scene.memory.objects.add(this.createObject(600,600,50,this.scene.cfg.cooldown));
+        this.scene.memory.objects.add(this.createObject(700,500,50,this.scene.cfg.cooldown));
+        
     }
     createObject(x,y,radius,coolDown){
-        console.log('Critou o objeto');
         let obj1 = this.scene.physics.add.sprite(x, y, 'gem');
         obj1.setDisplaySize(radius * 2, radius * 2);
         obj1.body.setSize(radius * 2, radius * 2,false);
         obj1.body.setCircle(radius);
         obj1.body.setOffset(obj1.width / 2 - radius, obj1.height / 2 - radius);
+        obj1.body.setVelocity({x:0,y:0});
         obj1.coolDown = coolDown;
         obj1.radius = radius;
         obj1.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', 'EVANDRO', 5).setOrigin(0.5);
@@ -30,8 +34,10 @@ export class Engine{
     moveObjects(){
         for (const block of this.scene.memory.objects.getChildren()){
             let speed = block.radius > 0 ? this.scene.cfg.baseSpeed / block.radius : this.scene.cfg.baseSpeed;
+            speed = speed > 100?100:speed;
             block.speed = speed;
-            console.log('Speed: ',speed);
+            let angle = Math.atan2(this.scene.memory.target.y - block.y, this.scene.memory.target.x - block.x);
+            block.angle = angle;
             this.scene.physics.moveToObject(block, this.scene.memory.target, speed);
         }
     }
@@ -80,5 +86,92 @@ export class Engine{
         let zoom = Math.min(zoomX, zoomY);
     
         this.scene.cameras.main.setZoom(zoom);
+    }
+    split(){
+        let i = 0;
+        var arrayObj = [];
+        if(this.scene.memory.objects.getChildren().length < this.scene.cfg.maxobject){
+            for (const object of this.scene.memory.objects.getChildren()){
+                if (object.radius > 10) { 
+
+                    var newObject = this.createObject(
+                        object.x + Math.cos(object.angle + Math.PI * i) * object.radius,
+                        object.y + Math.sin(object.angle + Math.PI * i) * object.radius,
+                        object.radius / 2,
+                        this.scene.cfg.cooldown
+                    )
+                    arrayObj.push(newObject);
+                    
+                    
+                    var scroll ={x: object.x + 500,
+                                 y: object.y + 500}
+                    console.log(object.x,object.y,scroll,this.scene.physics);
+                    this.scene.physics.moveToObject(
+                        newObject, scroll, 600
+                    );
+
+                    object.radius = object.radius / 2;     
+                    this.scene.tweens.add({
+                        targets: object,
+                        scale: 0.5,
+                        ease: 'Sine.easeInOut', 
+                        duration: 500, 
+                        onComplete: function() {
+                           
+                        }
+                    });
+                    this.scene.tweens.add({
+                        targets: newObject,
+                        scale: 0.5,
+                        ease: 'Sine.easeInOut', 
+                        duration: 500, 
+                        onComplete: function() {
+                           
+                        }
+                    });
+           
+
+                    i++;        
+                }    
+            }
+
+        }
+        arrayObj.forEach(obj =>{
+            this.scene.memory.objects.add(obj);
+        })
+
+    }
+
+    checkCollisions() {
+        console.log('tamanho:',this.scene.memory.objects.getChildren().length);
+        for (const obj1 of this.scene.memory.objects.getChildren()){
+            //  if(obj1.coolDown > 0){
+                for (const obj2 of this.scene.memory.objects.getChildren()){
+                    //if(obj2.coolDown > 0){
+                        if(obj1 != obj2){
+                            let object1 = obj1;
+                            let object2 = obj2;
+                            let dx = object2.x - object1.x;
+                            let dy = object2.y - object1.y;
+                            let distance = Math.sqrt(dx * dx + dy * dy);
+                            distance += (distance / 5.5);
+                            if (distance && distance < object1.radius + object2.radius) {
+                                let overlap = object1.radius + object2.radius - distance;
+                                let adjustX = (overlap / 2) * (dx / distance);
+                                let adjustY = (overlap / 2) * (dy / distance);
+                                object1.x -= adjustX;
+                                object1.y -= adjustY;
+                                object2.x += adjustX;
+                                object2.y += adjustY;
+                            }
+                            obj2.coolDown -=1;
+                            obj2.coolDown = Math.max(obj2.coolDown,0);
+                        }    
+                //  }
+                }
+                obj1.coolDown -= 1;   
+                obj1.coolDown = Math.max(obj1.coolDown,0);
+            //  }
+        }   
     }
 }
