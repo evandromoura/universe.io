@@ -11,6 +11,7 @@ class Game extends Phaser.Scene{
         this.load.image('gem','assets/img/obj/gem.png');
         this.load.image('bg', 'assets/img/bg/bg.jpg');
         this.load.bitmapFont('atari', 'assets/engine/fonts/bitmap/atari-smooth.png', 'assets/engine/fonts/bitmap/atari-smooth.xml');
+        this.load.atlas('flares', 'assets/engine/particles/flares.png', 'assets/engine/particles/flares.json');
     }
 
     create (){
@@ -20,15 +21,23 @@ class Game extends Phaser.Scene{
 
         this.cfg = {
             graph:{ scene:{ width: 2560,height: 1600 }, window:{width: 1680,height: 1050}},
-            cooldown:30000,
+            cooldown:1000,
+            cooldownSpeed:500,
             baseSpeed:3000,
-            maxobject:10
+            maxobject:10,
+            numberOfParticles:200,
+            speed:{
+                min:10,
+                max:50,
+                factor:1000
+            }
         }
         this.engine.createScenario();
 
         
         
         //CREATE INICIAL OBJECT
+        this.engine.createInitialParticules();
         this.engine.createInitialObject();
         this.input.on('pointermove', this.pointermove);
 
@@ -37,15 +46,23 @@ class Game extends Phaser.Scene{
         });
     }
     update(){
+        if (this.input.activePointer.isDown || this.input.activePointer.isMoving) {
+            var point = this.cameras.main.getWorldPoint(this.input.x, this.input.y);
+            this.memory.target.x = point.x;
+            this.memory.target.y = point.y;
+        }
+        scene.engine.moveObjects();
         this.engine.updateText();
         this.engine.zoom();
         this.engine.checkCollisions();
+        this.engine.checkColisionObjects();
+      
     }
     pointermove(pointer){
         var point = scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
         scene.memory.target.x = point.x;
         scene.memory.target.y = point.y;
-        scene.engine.moveObjects();
+        //scene.engine.moveObjects();
     }
      
 }
