@@ -34,7 +34,7 @@ export class Engine{
         obj1.body.setSize(radius * 2, radius * 2,false);
         obj1.body.setCircle(radius);
         obj1.body.setOffset(obj1.width / 2 - radius, obj1.height / 2 - radius);
-        obj1.body.setVelocity({x:0,y:0});
+        obj1.body.setVelocity({x:10,y:10});
         obj1.coolDown = coolDown;
         obj1.coolDownSpeed = 0;
         obj1.radius = radius;
@@ -51,46 +51,27 @@ export class Engine{
             let objects = this.scene.memory.objects.getChildren();
         
             objects.forEach((obj1, index) => {
-                // Movimentação em direção ao mouse
-                let dxMouse = target.x - obj1.x;
-                let dyMouse = target.y - obj1.y;
-                let distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
-                let normDxMouse = dxMouse / distMouse;
-                let normDyMouse = dyMouse / distMouse;
-        
-                
-                let speed = MOUSE_ATTRACTION_SPEED * (300 / obj1.radius); // Exemplo de ajuste de velocidade inversamente proporcional ao raio
-                console.log(speed);
-                speed = Phaser.Math.Clamp(speed, this.scene.cfg.speed.min, this.scene.cfg.speed.max);
+                if(obj1.coolDownSpeed == 0){
+                    let dxMouse = target.x - obj1.x;
+                    let dyMouse = target.y - obj1.y;
+                    let distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
+                    let normDxMouse = dxMouse / distMouse;
+                    let normDyMouse = dyMouse / distMouse;
+                    let speed = MOUSE_ATTRACTION_SPEED * (300 / obj1.radius); // Exemplo de ajuste de velocidade inversamente proporcional ao raio
+                    console.log(speed);
+                    speed = Phaser.Math.Clamp(speed, this.scene.cfg.speed.min, this.scene.cfg.speed.max);
 
-                obj1.body.velocity.x = normDxMouse * speed;
-                obj1.body.velocity.y = normDyMouse * speed;
-
-                
-
-        
-                // Atração magnética
-                // for (let j = 0; j < objects.length; j++) {
-                //     if (index === j) continue; // Ignora o próprio objeto
-        
-                //     let obj2 = objects[j];
-                //     let dx = obj2.x - obj1.x;
-                //     let dy = obj2.y - obj1.y;
-                //     let dist = Math.sqrt(dx * dx + dy * dy);
-        
-                //     if (dist > 0) {
-                //         let force = MAGNETIC_CONSTANT * (obj1.radius * obj2.radius) / (dist * dist);
-                //         let vx = (dx / dist) * force;
-                //         let vy = (dy / dist) * force;
-        
-                //         obj1.body.velocity.x -= vx;
-                //         obj1.body.velocity.y -= vy;
-                //     }
-                // }
+                    obj1.body.velocity.x = normDxMouse * speed;
+                    obj1.body.velocity.y = normDyMouse * speed;
+                }else{
+                    // const MAGNETIC_CONSTANT =  100;
+                    // const decelerationFactor = 1 - (MAGNETIC_CONSTANT / obj1.coolDownSpeed);
+                    // obj1.body.velocity.x *= decelerationFactor; 
+                    // obj1.body.velocity.y *= decelerationFactor;
+                    obj1.coolDownSpeed = Math.max(obj1.coolDownSpeed - 1, 0);
+                }
             });
-        
     }
-
     updateText(){
         for (const object of this.scene.memory.objects.getChildren()){
             object.bitmapText.x = object.x;
@@ -104,7 +85,6 @@ export class Engine{
             object.bitmapText.setFontSize(fontSize);
             object.bitmapScore.setFontSize(fontSizeScore);
             object.bitmapScore.setText(object.radius);
-
         }
     }
     zoom() {
@@ -124,7 +104,7 @@ export class Engine{
         let centroY = (minY + maxY) / 2;
         let largura = maxX - minX;
         let altura = maxY - minY;
-        let fatorDeMargem = this.scene.memory.objects.getChildren().length > 1?3:5; 
+        let fatorDeMargem = 5; 
         largura *= fatorDeMargem;
         altura *= fatorDeMargem;
         this.scene.cameras.main.centerOn(centroX, centroY);
@@ -144,15 +124,29 @@ export class Engine{
                 if (object.radius > 10) { 
 
                     var newObject = this.createObject(
-                        object.x + Math.cos(object.angle + Math.PI * i) * object.radius,
-                        object.y + Math.sin(object.angle + Math.PI * i) * object.radius,
+                        object.x - (object.radius /2),
+                        object.y - (object.radius /2),
                         object.radius / 2,
                         this.scene.cfg.cooldown
                     )
+                    //AQUI
                     arrayObj.push(newObject);
+                    object.coolDownSpeed = 50;
+                    
+                    let dxMouse = this.scene.memory.target.x - newObject.x;
+                    let dyMouse = this.scene.memory.target.y - newObject.y;
+                    let distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
+                    let normDxMouse = dxMouse / distMouse;
+                    let normDyMouse = dyMouse / distMouse;        
+                    let MOUSE_ATTRACTION_SPEED = 1500;
+                    let speed = MOUSE_ATTRACTION_SPEED * (300 / newObject.radius); 
+                    speed = Phaser.Math.Clamp(speed, this.scene.cfg.speed.min, this.scene.cfg.speed.max);
+                    console.log(speed,newObject.body.velocity.x,newObject.body.velocity.y);    
+                    object.body.velocity.x = normDxMouse * speed;
+                    object.body.velocity.y = normDyMouse * speed;    
                     
                     object.radius = object.radius / 2;     
-                    this.updateSpriteSizeEat(object);
+                    this.updateSpriteSizeEat(object,1000);
                     object.coolDown = this.scene.cfg.cooldown;    
                     i++;        
                 }    
@@ -164,9 +158,6 @@ export class Engine{
         })
 
     }
-
-    
-
     checkCollisions() {
         let objects = this.scene.memory.objects.getChildren();
     
@@ -212,56 +203,33 @@ export class Engine{
             for (const objRival of this.scene.memory.objects.getChildren()){
                 if(obj != objRival){
                     if (this.circleOverlapsParticle(obj, objRival)) {
-
-                        
-                        // this.scene.tweens.add({
-                        //     targets: objRival,
-                        //     x: obj.x, // Move o objeto absorvido para a posição x do objeto que cresce
-                        //     y: obj.y, // Move o objeto absorvido para a posição y do objeto que cresce
-                        //     scale: 0, // Reduz a escala do objeto absorvido até que desapareça
-                        //     duration: 500,
-                        //     ease: 'Cubic.InOut',
-                        //     onComplete: () => {
-                        //         console.log('ENTROU NO ONCOMPLETE')
-                        //         obj.radius += objRival.radius;
-                        //         this.updateSpriteSizeEat(obj);
-                        //         objRival.bitmapText.destroy();
-                        //         objRival.bitmapScore.destroy();
-                        //         objRival.destroy(); // Destrói o objeto absorvido após a animação
-                        //     }
-                        // });
                         obj.radius += objRival.radius;
-                        this.updateSpriteSizeEat(obj);
+                        this.updateSpriteSizeEat(obj,500);
                         objRival.bitmapText.destroy();
                         objRival.bitmapScore.destroy();
                         objRival.destroy();
-                        
                     }
                 }
             }
         }        
     }
-    updateSpriteSizeEat(obj){
-        let newRadius = obj.radius;
-        let newSize = newRadius * 2;
-
-        // Animação do tamanho do sprite
+    updateSpriteSizeEat(obj,duration){
+    
+        let newValue = obj.radius * 2;
         this.scene.tweens.add({
             targets: obj,
-            displayWidth: newSize, // Novo tamanho de exibição (largura)
-            displayHeight: newSize, // Novo tamanho de exibição (altura)
-            duration: 1000, // Duração da animação em milissegundos
-            ease: 'Quadratic.Out', // Tipo de suavização da animação
+            displayWidth: newValue, 
+            displayHeight: newValue, 
+            duration: duration, 
+            ease: 'Quadratic.Out', 
             onUpdate: () => {
-                // Atualiza o corpo físico do sprite para corresponder à nova escala durante a animação
-                console.log('RETORNO AQUI: ',obj);
-                if(obj.body){
-                    obj.body.setSize(newSize, newSize, false);
-                    obj.body.setCircle(newRadius, obj.width / 2 - newRadius, obj.height / 2 - newRadius);
-                }
+                
             },
             onComplete: () => {
-                // Ação após a conclusão da animação, se necessário
+                if(obj.body){
+                    obj.body.setSize(obj.radius, obj.radius, false);
+                    obj.body.setCircle(obj.radius, obj.width / 2 - obj.radius, obj.height / 2 - obj.radius);
+                }
             }
         });
     } 
@@ -271,17 +239,7 @@ export class Engine{
         for (let i = 0; i < numberOfParticles; i++) {
             var particle =  this.scene.physics.add.sprite(
                 Phaser.Math.Between(0, this.scene.physics.world.bounds.width),
-                Phaser.Math.Between(0, this.scene.physics.world.bounds.height),'flares'
-                // , {
-                //     frame: [ 'red', 'yellow', 'green' ],
-                //     lifespan: 4000,
-                //     speed: { min: 150, max: 250 },
-                //     scale: { start: 0.4, end: 0 },
-                //     gravityY: 150,
-                //     bounce: 0.8,
-                //     blendMode: 'ADD'
-                // }
-                );
+                Phaser.Math.Between(0, this.scene.physics.world.bounds.height),'flares');
                 particle.radius = 5;
                 this.scene.memory.particles.add(particle);
         }            
@@ -291,7 +249,5 @@ export class Engine{
         const dy = circle.y - particle.y;
         return Math.sqrt(dx * dx + dy * dy) < circle.radius;
     }
-    
-    
     
 }
