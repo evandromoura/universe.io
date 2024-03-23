@@ -22,6 +22,9 @@ class Game extends Phaser.Scene{
     create (){
         // VARIABLES
         scene = this;
+        this.memory = new Memory();
+        this.memory.nickname = Util.getUrlParameter('nickname');
+        this.memory.room = Util.getUrlParameter('room');
 
         // CONFIG
         this.cfg = {
@@ -36,15 +39,18 @@ class Game extends Phaser.Scene{
             speed:{min:10, max:50, factor:1000},
             updateServerInterval:2000
         }
+
+        
         
         //CREATE INICIAL OBJECT
         this.engine = new Engine(this);
+        this.engine.init();
         this.engine.createScenario();
         
-         this.memory = new Memory();
-         this.engine.init();
-        this.memory.nickname = Util.getUrlParameter('nickname');
-        this.memory.room = Util.getUrlParameter('room');
+        this.socket = new Socket(this).connect();
+        
+         
+         
         this.anims.create({key: 'explode',frames: 'boom',frameRate: 20,showOnStart: true,hideOnComplete: true});
         //this.engine.createInitialParticules();
 
@@ -56,10 +62,9 @@ class Game extends Phaser.Scene{
 
         //CONECTANDO AO SOCKET
         
-       // this.socket = new Socket(this).connect();
+        
     }
     update(){
-        console.log('Atualizou o q ?',this.memory.objects.getChildren().length);
         this.engine.updateText();
         this.engine.checkCollisions();
         this.engine.checkColisionObjects();

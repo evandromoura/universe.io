@@ -11,6 +11,10 @@ const players = {};
 const rooms = {};
 const lobby = {};
 
+const cfg = {
+    numberOfParticles:250,
+}
+
 io.on('connection', socket => {
     console.log(socket.id + '  CONECTOU');
     players[socket.id] = {nickname:'',score:'',socket:socket,objects:[]};
@@ -22,15 +26,24 @@ io.on('connection', socket => {
 
     socket.on('join', (room) => {
         socket.join(room);
+
         rooms[room].players[socket.id] = players[socket.id];
+
         players[socket.id].activeRoom = room;
+
         rooms[room].players[socket.id].objects = [];
+
         rooms[room].players[socket.id].objects[0] = {position : { x: 400, y: 400 , radius:0}};
-        socket.emit('initialObject',rooms[room].players[socket.id].objects[0]);
+
         io.to(room).emit('message',players[socket.id].nickname+' is online');
+
         socket.emit('join_success',room);
+
         console.log('ENTROU NA SALA COM '+Object.keys(rooms[room].players).length);
+
         io.to(room).emit('update',rooms[room]);
+
+       // socket.emit('initialObject',rooms[room].players[socket.id].objects[0]);
     });
 
     socket.on('disconnect', () => {
@@ -59,13 +72,18 @@ io.on('connection', socket => {
 function broadcastRoom(room){
     io.to(room).emit('update',rooms[room]);
 }
+
+function createRoom(room){
+
+
+}
 init = ()=>{
     initRooms();
 }
 
 initRooms = ()=>{
     rooms['SALA_1'] = {name:'SALA_1',cols: 800,rows:800,particules:[],traps:[],players:[]};
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < cfg.numberOfParticles; i++) {
         generateParticules(rooms['SALA_1']);
     }
     console.log(rooms['SALA_1'].particules);

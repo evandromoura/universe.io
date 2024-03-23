@@ -9,7 +9,7 @@ export class Engine{
         this.scene.memory.oponnents = this.scene.physics.add.group({collideWorldBounds:true});
         this.scene.memory.particles = this.scene.physics.add.group({collideWorldBounds:true});
         let obj = {position:{x:300,y:500,radius:34}};
-        this.createInitialObject(obj);
+        //this.createInitialObject(obj);
     }
     createScenario(){
         this.scene.add.image(0, 0, 'bg').setOrigin(0, 0).setDisplaySize(this.scene.cfg.graph.window.width, this.scene.cfg.graph.window.height);
@@ -76,7 +76,7 @@ export class Engine{
             });
     }
     updateText(){
-        if(this.scene.memory.objects && this.scene.memory.objects.getChildren()){
+        if(this.scene.memory.objects.getChildren().length > 0 && this.scene.memory.objects.getChildren()){
             for (const object of this.scene.memory.objects.getChildren()){
                 object.bitmapText.x = object.x;
                 object.bitmapText.y = object.y;
@@ -94,7 +94,7 @@ export class Engine{
     }
     zoom() {
         
-        if(this.scene.memory.objects){
+        if(this.scene.memory.objects.getChildren().length > 0){
             let minX = Infinity;
             let maxX = -Infinity;
             let minY = Infinity;
@@ -123,8 +123,6 @@ export class Engine{
             let zoom = Math.min(zoomX, zoomY);
         
             this.scene.cameras.main.setZoom(zoom);
-        }else{
-            this.scene.cameras.main.setZoom(4);
         }    
         
     }
@@ -163,7 +161,7 @@ export class Engine{
         })
     }
     checkCollisions() {
-        if(this.scene.memory.objects){
+        if(this.scene.memory.objects.getChildren().length > 0){
             let objects = this.scene.memory.objects.getChildren();
             for (let i = 0; i < objects.length; i++) {
                 if(objects[i].coolDown > 0 && objects[i].coolDownSpeed == 0){
@@ -205,7 +203,7 @@ export class Engine{
         
     }
     checkColisionObjects(){
-        if(this.scene.memory.objects){
+        if(this.scene.memory.objects.getChildren().length > 0){
             for (const obj of this.scene.memory.objects.getChildren()){
                 if(obj.coolDown == 0){
                     for (const objRival of this.scene.memory.objects.getChildren()){
@@ -260,6 +258,20 @@ export class Engine{
                 particle.radius = 50;
                 this.scene.memory.particles.add(particle);
         }            
+    }
+
+    drawParticles(particles) {
+        this.scene.memory.particles.clear(true);
+        this.scene.memory.particles.destroy(true);
+        this.scene.memory.particles = this.scene.physics.add.group({collideWorldBounds:true});
+        particles.forEach(particleIt=>{
+            var particle =  this.scene.physics.add.sprite(particleIt.x,
+                particleIt.y,'flares');
+                particle.radius = particleIt.radius;
+                
+                this.scene.memory.particles.add(particle);
+        })
+        
     }
     objectOverlapsParticle(circle, particle) {
         const dx = circle.x - particle.x;
