@@ -7,8 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const players = {}; 
-const rooms = {};
+var players = {}; 
+var rooms = {};
 const lobby = {};
 
 const cfg = {
@@ -16,34 +16,24 @@ const cfg = {
 }
 
 io.on('connection', socket => {
-    console.log(socket.id + '  CONECTOU');
-    players[socket.id] = {nickname:'',score:'',socket:socket,objects:[]};
+    players[socket.id] = {socketid:socket.id,nickname:'',score:'',objects:[]};
 
     socket.on('login',(login)=>{
         players[socket.id].nickname = login.nickname;
-        socket.emit('login_success',login.nickname);
+        socket.emit('login_success',players[socket.id]);
     })
-
+ 
     socket.on('join', (room) => {
         socket.join(room);
-
-        rooms[room].players[socket.id] = players[socket.id];
-
-        players[socket.id].activeRoom = room;
-
-        rooms[room].players[socket.id].objects = [];
-
-        rooms[room].players[socket.id].objects[0] = {position : { x: 400, y: 400 , radius:0}};
-
-        io.to(room).emit('message',players[socket.id].nickname+' is online');
-
+        rooms[room].players.push(players[socket.id]);
+        const player = getPlayer(socket.id,room);
+        player.objects = [];
+        player.activeRoom = room;
+        player.objects.push({socketid:socket.id,uid:generateUID(),radius:10,position : { x: 400, y: 400}});
+        io.to(room).emit('message',player.nickname+' is online');
         socket.emit('join_success',room);
-
-        console.log('ENTROU NA SALA COM '+Object.keys(rooms[room].players).length);
-
         io.to(room).emit('update',rooms[room]);
-
-       // socket.emit('initialObject',rooms[room].players[socket.id].objects[0]);
+        socket.emit('initialObject',player.objects[0]);
     });
 
     socket.on('disconnect', () => {
@@ -53,17 +43,19 @@ io.on('connection', socket => {
         delete players[socket.id];
     });
 
-    socket.on('move', () => {
-        if(players[socket.id].activeRoom){
-            delete rooms[players[socket.id].activeRoom].players[socket.id];
+
+    socket.on('sendupdate', (objects,room) => {
+        if(socket && rooms[room] && rooms[room].players && getPlayer(socket.id,room)){
+            getPlayer(socket.id,room).objects = objects;
+            for (let i = 0;i<rooms[room].players.length;i++){
+                socket.broadcast.to(room).emit('updateplayers',rooms[room].players);
+            }
         }
-        delete players[socket.id];
     });
 
-    socket.on('sendupdate', (objects) => {
-        players[socket.id].objects = objects;
-        //broadcastRoom(room);
-        //console.log(JSON.stringify(objects));
+    socket.on('eatparticle', (uid,room) => {
+        deleteByUID(uid,room)
+        socket.broadcast.to(room).emit('removeparticule',uid);
     });
 
     
@@ -74,22 +66,39 @@ function broadcastRoom(room){
 }
 
 function createRoom(room){
-
-
 }
+
+function getPlayer(socketid,room) {
+    if(rooms[room] && rooms[room].players){
+        const player = rooms[room].players.find(obj => obj.socketid === socketid);
+        return player;
+    }
+    return null;
+}
+
+function findByUID(uid,room) {
+    return rooms[room].particles.find(obj => obj.uid === uid);
+}
+
+function deleteByUID(uid,room) {
+    let index = rooms[room].particles.findIndex(obj => obj.uid === uid);
+    if (index !== -1) { 
+        rooms[room].particles.splice(index, 1);
+    }
+}
+
 init = ()=>{
     initRooms();
 }
 
 initRooms = ()=>{
-    rooms['SALA_1'] = {name:'SALA_1',cols: 800,rows:800,particules:[],traps:[],players:[]};
+    rooms['SALA_1'] = {name:'SALA_1',cols: 1920,rows:1080,particles:[],traps:[],players:[]};
     for (let i = 0; i < cfg.numberOfParticles; i++) {
-        generateParticules(rooms['SALA_1']);
+        generateParticles(rooms['SALA_1']);
     }
-    console.log(rooms['SALA_1'].particules);
 }
 
-function generateParticules(room) {
+function generateParticles(room) {
     let validPosition, x, y;
     do {
         validPosition = true;
@@ -97,13 +106,23 @@ function generateParticules(room) {
         y = Math.random() * room.rows;
         for (let player of room.players) {
             let distance = Math.sqrt((player.position.x - x) ** 2 + (player.position.y - y) ** 2);
-            if (distance < player.position.radius + 10) { // 10 é um buffer para garantir que não está muito perto
+            if (distance < player.radius + 10) { 
                 validPosition = false;
                 break;
             }
         }
     } while (!validPosition);
-    room.particules.push({ x, y, radius: 5 ,color:'red'});
+    room.particles.push({ x, y, radius: 1 ,color:'red',uid:generateUID()});
+}
+
+function generateUID(length = 6) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
 }
 
 

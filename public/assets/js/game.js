@@ -28,7 +28,7 @@ class Game extends Phaser.Scene{
 
         // CONFIG
         this.cfg = {
-            graph:{ scene:{ width: 2560,height: 1600 }, window:{width: 1680,height: 1050},
+            graph:{ scene:{ width: 1920,height: 1080}, window:{width: 1680,height: 1050},
             zoom:{min:4,max:7}},
             cooldown:1000,
             cooldownSpeed:500,
@@ -48,6 +48,7 @@ class Game extends Phaser.Scene{
         this.engine.createScenario();
         
         this.socket = new Socket(this).connect();
+        this.socket.login();
         
          
          
@@ -65,13 +66,16 @@ class Game extends Phaser.Scene{
         
     }
     update(){
-        this.engine.updateText();
+        
         this.engine.checkCollisions();
         this.engine.checkColisionObjects();
         this.engine.checkColisionParticules();
         this.engine.zoom();
         this.pilot();
+        this.engine.updateText();
+        this.engine.drawPlayers();
         this.sendInfoServer();
+        
     }
     pointermove(pointer){
         busy=0;
@@ -100,13 +104,13 @@ class Game extends Phaser.Scene{
             force.copy(distance).setLength(50000 / distance.lengthSq()).limit(1000);
             acceleration.copy(force).scale(1 / block.body.mass);
             block.body.velocity.add(acceleration);
+            scene.engine.updateText();
         }
     }
     sendInfoServer(){
         if(this.socket){
             if (new Date() - this.memory.lastUpdate > this.cfg.updateServerInterval) {
-                this.socket.sendUpdate(this.memory.objects.getChildren());
-
+                this.socket.sendUpdate(this.memory.objects.getChildren(),this.memory.room);
             }    
         }
     }

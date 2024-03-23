@@ -8,36 +8,46 @@ export class Socket{
         this.socket = io('http://localhost:3000',{ transports : ['websocket'] });
         
         this.socket.on('message', (message) => {
-            
-            console.log(message);
 
         });
-        this.socket.on('login_success', (nickname) => {
-            
-            console.log(nickname);
+        this.socket.on('login_success', (player) => {
+            console.log('login_sucesso',player);
+            this.scene.memory.player = player;
         });
         this.socket.on('join_success', (room) => {
-            
-            console.log(room);
+            this.scene.memory.activeRoom = room;
         });
 
         this.socket.on('update', (room) => {
-            console.log('ROOM',room.particules);
-            this.scene.engine.drawParticles(room.particules);
-            console.log('UPDATE: ',room);
+            this.scene.engine.drawParticles(room.particles);
         });
 
         this.socket.on('initialObject',(object) =>{
-            console.log('entrou no callback');
-            //this.scene.engine.createInitialObject(object);
-        })
+            this.scene.engine.createInitialObject(object);
+        });
+
+        this.socket.on('removeparticule',(uid) =>{
+            console.log('RECEBEU O REMOVE',uid);
+            this.scene.engine.deleteByUID(uid);
+        });
+
+        this.socket.on('updateplayers',players =>{
+            // var playerMemory = this.scene.memory.players.find(obj => obj.uid === uid);
+            // playerMemory.objects = player.objects;
+             console.log('recebeu o player',players);
+            // this.scene.memory.players = player;
+        });
 
         this.socket.emit('login',{nickname:this.scene.memory.nickname});
         this.socket.emit('join', this.scene.memory.room);
         return this;
     }
-    sendUpdate(objects){
-        this.socket.emit('sendupdate',objects);
+    sendUpdate(objects,room){
+        this.socket.emit('sendupdate',objects,room);
+    }
+
+    eatparticle(uid,room){
+        this.socket.emit('eatparticle',uid,room);
     }
 
 }    

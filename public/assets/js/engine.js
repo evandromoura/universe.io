@@ -6,26 +6,33 @@ export class Engine{
 
     init(){
         this.scene.memory.objects = this.scene.physics.add.group({collideWorldBounds:true});
-        this.scene.memory.oponnents = this.scene.physics.add.group({collideWorldBounds:true});
-        this.scene.memory.particles = this.scene.physics.add.group({collideWorldBounds:true});
+        this.scene.memory.players = [];
+        this.scene.memory.particles = [];
         let obj = {position:{x:300,y:500,radius:34}};
-        //this.createInitialObject(obj);
+        const particlesG = this.scene.add.particles('flares', {
+            frame: [ 'red', 'yellow', 'green' ],
+            lifespan: -1,
+            speed: 0
+        });
+        // this.emitter = particlesG.createEmitter({
+        //     speed: 0,
+        //     lifespan: Infinity,
+        //     frequency: -1, 
+        //     maxParticles: 10
+        // });
+        
     }
     createScenario(){
         this.scene.add.image(0, 0, 'bg').setOrigin(0, 0).setDisplaySize(this.scene.cfg.graph.window.width, this.scene.cfg.graph.window.height);
         this.scene.physics.world.setBounds(0, 0, this.scene.cfg.graph.scene.width, this.scene.cfg.graph.scene.height);
-        console.log('Criou o cenario');
     }
     createInitialObject(object){
-        console.log('objeto inicial',object); 
-        this.scene.memory.objects.add(this.createObject(object.position.x,object.position.y,object.position.radius,this.scene.cfg.cooldown,this.scene.memory.nickname));
+        this.scene.memory.objects.add(this.createObject(object.position.x,object.position.y,object.radius,this.scene.cfg.cooldown,this.scene.memory.nickname));
         // this.scene.memory.objects.add(this.createObject(300,400,50,this.scene.cfg.cooldown));
         // this.scene.memory.objects.add(this.createObject(400,300,50,this.scene.cfg.cooldown));
         // this.scene.memory.objects.add(this.createObject(500,700,50,this.scene.cfg.cooldown));
         // this.scene.memory.objects.add(this.createObject(600,600,50,this.scene.cfg.cooldown));
         // this.scene.memory.objects.add(this.createObject(700,500,50,this.scene.cfg.cooldown));
-        console.log('Objects Memory: ',this.scene.memory.objects.getChildren()); 
-        
     }
     createInitialParticules(x,y,radius,coolDown){
         this.scene.memory.particles = this.scene.physics.add.group({collideWorldBounds:true});
@@ -43,9 +50,24 @@ export class Engine{
         obj1.radius = radius;
         obj1.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
         obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
-        console.log('eNTROU NO CREATE OBJECT');
         return obj1;
     }
+
+    createObjectPlayer(x,y,radius,name,socketid,uid){
+        let obj1 = this.scene.physics.add.sprite(x, y, 'gem');
+        obj1.setDisplaySize(radius * 2, radius * 2);
+        obj1.body.setSize(radius * 2, radius * 2,false);
+        obj1.body.setCircle(radius);
+        obj1.body.setOffset(obj1.width / 2 - radius, obj1.height / 2 - radius);
+        obj1.body.setVelocity({x:10,y:10});
+        obj1.radius = radius;
+        obj1.socketid = socketid;
+        obj1.uid = uid;
+        obj1.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
+        obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
+        return obj1;
+    }
+
     moveObjects(){
         
             const MAGNETIC_CONSTANT = 0.55; 
@@ -63,7 +85,6 @@ export class Engine{
                     let speed = MOUSE_ATTRACTION_SPEED * (300 / obj1.radius); 
                     speed = Phaser.Math.Clamp(speed, this.scene.cfg.speed.min, this.scene.cfg.speed.max);
                     if(obj1.coolDownSpeed > 0){
-                        console.log('Entrou no boost');
                         speed *= 10;
                         obj1.coolDownSpeed -= 1;
                     }
@@ -122,9 +143,11 @@ export class Engine{
             let zoomY = this.scene.cameras.main.height / altura;
             let zoom = Math.min(zoomX, zoomY);
         
-            this.scene.cameras.main.setZoom(zoom);
-        }    
-        
+            //this.scene.cameras.main.setZoom(zoom);
+            this.scene.cameras.main.setZoom(1);
+        } else{
+            this.scene.cameras.main.setZoom(5);
+        }   
     }
     split() {
         var arrayObj = [];
@@ -215,7 +238,6 @@ export class Engine{
                                     objRival.bitmapText.destroy();
                                     objRival.bitmapScore.destroy();
                                     objRival.destroy();
-                                    console.log('ta destruindo');
                                 }
                             }
                         }
@@ -227,16 +249,18 @@ export class Engine{
 
     checkColisionParticules(){
         if(this.scene.memory.particles){
-            for (const particle of this.scene.memory.particles.getChildren()){    
+            this.scene.memory.particles.forEach((particle,index)=>{
                 for (const obj of this.scene.memory.objects.getChildren()){
                     if (this.objectOverlapsParticle(obj, particle)) {
                         obj.radius += particle.radius / (obj.radius / 2); 
                         //obj.radius += particle.radius; 
                         this.updateSpriteSizeEat(obj,10);
+                        this.scene.socket.eatparticle(particle.uid,this.scene.memory.activeRoom);
                         particle.destroy();
+                        this.scene.memory.particles.splice(index,1);
                     }
-                }    
-            }
+                }
+            });
         }    
     }
 
@@ -249,8 +273,6 @@ export class Engine{
 
     } 
     createParticles(numberOfParticles) {
-
-        
         for (let i = 0; i < numberOfParticles; i++) {
             var particle =  this.scene.physics.add.sprite(
                 Phaser.Math.Between(0, this.scene.physics.world.bounds.width),
@@ -259,18 +281,45 @@ export class Engine{
                 this.scene.memory.particles.add(particle);
         }            
     }
+    drawPlayers() {
+        if(this.scene.memory.players){
+            console.log('Entrou no draw players',this.scene.memory.player.uid);
+            if(this.scene.memory.players.find(obj => obj.uid !== this.scene.memory.player.uid)){
+                this.scene.memory.players.find(obj => obj.uid !== this.scene.memory.player.uid).forEach(player=>{
+                    if(!player.objectsPlayer){
+                        player.objectsPlayer = this.scene.physics.add.group({collideWorldBounds:true});
+                    }
+                    player.objects.forEach(obj=>{
+                        const objPhy = player.objectsPlayer.getChildren().find(objPlayer=>{objPlayer.uid === obj.uid});
+                        if(!objPhy){
+                            player.objectsPlayer.add(this.createObjectPlayer(obj.x,obj.y,obj.radius,player.nickname,obj.uid,player.socketid));
+                        }else{
+                            objPhy.radius = obj.radius;
+                            this.updateSpriteSizeEat(obj,duration);
+                        }
+                    });    
+                });
+            }
+        }
+    }
+
+    getObjectPlayer(uid){
+        if(this.scene.memory.players){
+            return this.scene.memory.players.find(player => player.uid === uid);
+        }else{
+            return null;
+        }
+    }
 
     drawParticles(particles) {
-        this.scene.memory.particles.clear(true);
-        this.scene.memory.particles.destroy(true);
-        this.scene.memory.particles = this.scene.physics.add.group({collideWorldBounds:true});
+        this.scene.memory.particles = [];
         particles.forEach(particleIt=>{
-            var particle =  this.scene.physics.add.sprite(particleIt.x,
-                particleIt.y,'flares');
-                particle.radius = particleIt.radius;
-                
-                this.scene.memory.particles.add(particle);
-        })
+            var particle =  this.scene.add.image(particleIt.x, particleIt.y,'flares');
+            particle.radius = particleIt.radius;
+            particle.uid = particleIt.uid;
+            this.scene.memory.particles.push(particle);
+        });
+        
         
     }
     objectOverlapsParticle(circle, particle) {
@@ -286,6 +335,12 @@ export class Engine{
             result += characters.charAt(Math.floor(Math.random() * charactersLength));
         }
         return result;
+    }
+    deleteByUID(uid) {
+        let index = this.scene.memory.particles.findIndex(obj => obj.uid === uid);
+        if (index !== -1) { 
+            this.scene.memory.particles.splice(index, 1);
+        }
     }
     
 }
