@@ -177,14 +177,13 @@ export class Engine{
     }
     split() {
         var arrayObj = [];
-        // Supondo que você tenha acesso à posição do mouse através de this.scene.memory.target
         const mouseTarget = this.scene.memory.target;
         for (const object of this.scene.memory.objects.getChildren()) {
             if (object.radius > this.scene.cfg.minRadiusSplit) { 
                 const direction = new Phaser.Math.Vector2(mouseTarget.x - object.x, mouseTarget.y - object.y).normalize();
-                const initialSpeed = 300; // Velocidade inicial alta
+                const initialSpeed = 300; 
                 const newObject = this.createObject(
-                    object.x + direction.x * object.radius, // Ajuste a posição inicial se necessário
+                    object.x + direction.x * object.radius, 
                     object.y + direction.y * object.radius,
                     object.radius / 2,
                     this.scene.cfg.cooldown,
@@ -382,16 +381,19 @@ export class Engine{
             if(this.scene.memory.players[i].socketid === socketid){
                 console.log('Morreu com esses objetos');
                 console.log(this.scene.memory.players[i].objectsPlayer.getChildren());
-                this.scene.memory.players[i].objectsPlayer.getChildren().forEach(object=>{
+                const objectsToDestroy = this.scene.memory.players[i].objectsPlayer.getChildren().slice();
+                objectsToDestroy.forEach(object => {
                     this.scene.graphics.explode(object.x,object.y);
                     object.bitmapText.destroy();
                     object.bitmapScore.destroy();
                     object.destroy();
                 });
+                
                 console.log('terminou com esses');
-                this.scene.memory.players[i].objectsPlayer.destroy(true);
+                console.log(this.scene.memory.players[i].objectsPlayer.getChildren());
+                //this.scene.memory.players[i].objectsPlayer.destroy(true);
                 this.scene.memory.players.splice(i,1);
-                break;
+                //break;
             }
         }
     }
