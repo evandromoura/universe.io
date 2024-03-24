@@ -31,8 +31,8 @@ class Game extends Phaser.Scene{
 
         // CONFIG
         this.cfg = {
-            graph:{ scene:{ width: 1920,height: 1080}, window:{width: 1680,height: 1050},
-            zoom:{min:4,max:7}},
+            graph:{scene:{ width: 1920,height: 1080}, window:{width: 1680,height: 1050},
+            zoom:{min:4,max:7,factor:0.9}},
             cooldown:100000,
             cooldownSpeed:500,
             baseSpeed:3000,
@@ -40,7 +40,8 @@ class Game extends Phaser.Scene{
             numberOfParticles:250,
             minRadiusSplit:20,
             speed:{min:10, max:50, factor:1000},
-            updateServerInterval:2000
+            updateServerInterval:2000,
+            sizeShoot:5
         }
 
         
@@ -61,14 +62,13 @@ class Game extends Phaser.Scene{
         //MOUSE
         this.input.on('pointermove', this.pointermove);
         this.input.keyboard.on('keydown-SPACE', () => {this.engine.split();});
-        
         this.input.on('pointerdown', this.explode);    
-
-        
-        
+        this.input.keyboard.on('keydown-W', () => {
+            this.engine.shoot();
+        });
     }
     update(){
-        
+        scene.engine.updateText();
         this.engine.checkCollisions();
         this.engine.checkColisionObjects();
         this.engine.checkColisionParticules();
@@ -84,6 +84,7 @@ class Game extends Phaser.Scene{
                 }
             });
         });
+        scene.engine.updateText();
     }
     pointermove(pointer){
         busy=0;
@@ -91,8 +92,8 @@ class Game extends Phaser.Scene{
         scene.memory.target.x = point.x;
         scene.memory.target.y = point.y;
         scene.engine.moveObjects();
+        scene.engine.updateText();
     }
-
     pilot(){
         if(busy < 10){
             scene.engine.moveObjects();

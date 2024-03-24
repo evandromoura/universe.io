@@ -38,6 +38,10 @@ export class Socket{
              this.scene.engine.playerleft(socketid);
         });
 
+        this.socket.on('globalshoot',(x,y,direction) =>{
+            this.scene.engine.createShootParticle(x, y, direction);
+       });
+
         this.socket.emit('login',{nickname:this.scene.memory.nickname});
         this.socket.emit('join', this.scene.memory.room);
         return this;
@@ -49,6 +53,10 @@ export class Socket{
 
     eatparticle(uid,room){
         this.socket.emit('eatparticle',uid,room);
+    }
+
+    shoot(x,y,direction,room){
+        this.socket.emit('shoot',x,y,direction,room);
     }
 
 }    

@@ -25,15 +25,17 @@ io.on('connection', socket => {
 
     socket.on('join', (room) => {
         socket.join(room);
-        rooms[room].players.push(players[socket.id]);
-        const player = getPlayer(socket.id, room);
-        player.objects = [];
-        player.activeRoom = room;
-        player.objects.push({ socketid: socket.id, uid: generateUID(), radius: 100, position: { x: 400, y: 400 } });
-        io.to(room).emit('message', player.nickname + ' is online');
-        socket.emit('join_success', room);
-        socket.emit('update', rooms[room]);
-        socket.emit('initialObject', player.objects[0]);
+        if(rooms[room] && rooms[room].players){
+            rooms[room].players.push(players[socket.id]);
+            const player = getPlayer(socket.id, room);
+            player.objects = [];
+            player.activeRoom = room;
+            player.objects.push({ socketid: socket.id, uid: generateUID(), radius: 100, position: { x: 400, y: 400 } });
+            io.to(room).emit('message', player.nickname + ' is online');
+            socket.emit('join_success', room);
+            socket.emit('update', rooms[room]);
+            socket.emit('initialObject', player.objects[0]);
+        }
     });
 
     socket.on('disconnect', () => {
@@ -46,7 +48,6 @@ io.on('connection', socket => {
         }
         delete players[socket.id];
     });
-
 
     socket.on('sendupdate', (objects, room) => {
         if (socket && rooms[room] && rooms[room].players) {
@@ -63,6 +64,10 @@ io.on('connection', socket => {
     socket.on('eatparticle', (uid, room) => {
         deleteByUID(uid, room)
         socket.broadcast.to(room).emit('removeparticule', uid);
+    });
+
+    socket.on('shoot', (x,y,direction, room) => {
+        io.to(room).emit('globalshoot', x,y,direction);
     });
 
 
@@ -92,7 +97,7 @@ init = () => {
 }
 
 initRooms = () => {
-    rooms['SALA_1'] = { name: 'SALA_1', cols: 1920, rows: 1080, particles: [], traps: [], players: [] };
+    rooms['SALA_1'] = { name: 'SALA_1', cols: 1920, rows: 1080, particles: [],fragments: [], traps: [], players: [] };
     for (let i = 0; i < cfg.numberOfParticles; i++) {
         generateParticles(rooms['SALA_1']);
     }

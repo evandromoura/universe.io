@@ -14,13 +14,6 @@ export class Engine{
             lifespan: -1,
             speed: 0
         });
-        // this.emitter = particlesG.createEmitter({
-        //     speed: 0,
-        //     lifespan: Infinity,
-        //     frequency: -1, 
-        //     maxParticles: 10
-        // });
-        
     }
     createScenario(){
         this.scene.add.image(0, 0, 'bg').setOrigin(0, 0).setDisplaySize(this.scene.cfg.graph.window.width, this.scene.cfg.graph.window.height);
@@ -50,7 +43,6 @@ export class Engine{
         obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
         return obj1;
     }
-
     createObjectPlayer(x,y,radius,name,socketid,uid){
         let obj1 = this.scene.physics.add.sprite(x, y, 'gem');
         obj1.setDisplaySize(radius * 2, radius * 2);
@@ -66,9 +58,7 @@ export class Engine{
         obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
         return obj1;
     }
-
     moveObjects(){
-        
             const MAGNETIC_CONSTANT = 0.55; 
             const MOUSE_ATTRACTION_SPEED = 10; 
             let target = this.scene.memory.target; 
@@ -108,15 +98,14 @@ export class Engine{
                 object.bitmapScore.x = object.x;
                 object.bitmapScore.y = object.y;
     
-                let fontSize = object.radius / 10; 
-                let fontSizeScore = object.radius / 10;
+                let fontSize = object.radius / 2; 
+                let fontSizeScore = object.radius / 5;
                 object.bitmapText.setFontSize(fontSize);
                 object.bitmapScore.setFontSize(fontSizeScore);
                 object.bitmapScore.setText(object.radius.toFixed(2));
             }
         }
     }
-
     updateTextPlayers(){
         //AQUI
         if(this.scene.memory.players.length > 0){
@@ -141,39 +130,41 @@ export class Engine{
     }
     zoom() {
         
-        if(this.scene.memory.objects.getChildren().length > 0){
-            let minX = Infinity;
-            let maxX = -Infinity;
-            let minY = Infinity;
-            let maxY = -Infinity;
-        
-            this.scene.memory.objects.getChildren().forEach(function(obj) {
-                minX = Math.min(minX, obj.x - obj.displayWidth / 2);
-                maxX = Math.max(maxX, obj.x + obj.displayWidth / 2);
-                minY = Math.min(minY, obj.y - obj.displayHeight / 2);
-                maxY = Math.max(maxY, obj.y + obj.displayHeight / 2);
-            });
-        
-            let centroX = (minX + maxX) / 2;
-            let centroY = (minY + maxY) / 2;
-            let largura = maxX - minX;
-            let altura = maxY - minY;
+        const objects = this.scene.memory.objects.getChildren();
+        if (objects.length === 0) return;
 
-            let fatorDeMargem = Phaser.Math.Clamp(this.scene.memory.objects.getChildren().length, this.scene.cfg.graph.zoom.min, this.scene.cfg.graph.zoom.max);
-            largura *= fatorDeMargem;
-            altura *= fatorDeMargem;
-            this.scene.cameras.main.centerOn(centroX, centroY);
-        
-            // Ajustar zoom baseado na maior dimensão para garantir que todos objetos caibam na tela
-            let zoomX = this.scene.cameras.main.width / largura;
-            let zoomY = this.scene.cameras.main.height / altura;
-            let zoom = Math.min(zoomX, zoomY);
-        
-            this.scene.cameras.main.setZoom(zoom);
-            //this.scene.cameras.main.setZoom(1);
-        } else{
-            this.scene.cameras.main.setZoom(5);
-        }   
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+        // Encontra os limites englobando todos os objetos
+        objects.forEach(object => {
+            minX = Math.min(minX, object.x - object.displayWidth / 2);
+            maxX = Math.max(maxX, object.x + object.displayWidth / 2);
+            minY = Math.min(minY, object.y - object.displayHeight / 2);
+            maxY = Math.max(maxY, object.y + object.displayHeight / 2);
+        });
+
+        // Calcula o centro e o tamanho da área que engloba todos os objetos
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        // Define os limites de zoom e o fator de ajuste fino
+        const minZoom = 0.5; // Zoom máximo (mais afastado, mostra mais do mapa)
+        const maxZoom = 5.0; // Zoom mínimo (mais próximo, mostra menos do mapa)
+        const zoomAdjustmentFactor = 0.5; // Fator de ajuste para adicionar uma margem
+
+        // Determina o nível de zoom necessário para que todos os objetos caibam na tela
+        const zoomX = this.scene.cameras.main.width / width;
+        const zoomY = this.scene.cameras.main.height / height;
+        let zoomLevel = Math.min(zoomX, zoomY) * zoomAdjustmentFactor;
+
+        // Aplica os limites de zoom
+        zoomLevel = Phaser.Math.Clamp(zoomLevel, minZoom, maxZoom);
+
+        // Aplica o zoom e centraliza a câmera nos objetos
+        this.scene.cameras.main.setZoom(zoomLevel);
+        this.scene.cameras.main.centerOn(centerX, centerY);
     }
     split() {
         var arrayObj = [];
@@ -275,7 +266,6 @@ export class Engine{
             }
         }            
     }
-
     checkColisionParticules(){
         if(this.scene.memory.particles){
             this.scene.memory.particles.forEach((particle,index)=>{
@@ -292,7 +282,6 @@ export class Engine{
             });
         }    
     }
-
     updateSpriteSizeEat(obj,duration){
     
         obj.setDisplaySize(obj.radius * 2, obj.radius * 2);
@@ -310,7 +299,6 @@ export class Engine{
                 this.scene.memory.particles.add(particle);
         }            
     }
-
     loadPlayers(players){
         if(players){
             let findPlayer = false; 
@@ -397,7 +385,6 @@ export class Engine{
             }
         }
     }
-
     getObjectPlayer(uid){
         if(this.scene.memory.players){
             return this.scene.memory.players.find(player => player.uid === uid);
@@ -405,7 +392,6 @@ export class Engine{
             return null;
         }
     }
-
     drawParticles(particles) {
         //this.scene.memory.particles = [];
         particles.forEach(particleIt=>{
@@ -417,7 +403,6 @@ export class Engine{
             }  
         });
     }
-    
     objectOverlapsParticle(circle, particle) {
         const dx = circle.x - particle.x;
         const dy = circle.y - particle.y;
@@ -437,6 +422,33 @@ export class Engine{
         if (index !== -1) { 
             this.scene.memory.particles[index].destroy();
             this.scene.memory.particles.splice(index, 1);
+        }
+    }
+
+    createShootParticle(x, y, direction, speed = 300, lifespan = 500) {
+        console.log('Voltou no create');
+        const particle = this.scene.physics.add.sprite(x, y, 'flares');
+        particle.setDisplaySize(this.scene.cfg.sizeShoot, this.scene.cfg.sizeShoot); 
+        particle.body.setVelocity(direction.x * speed, direction.y * speed);
+            this.scene.time.delayedCall(lifespan, () => {
+            particle.body.setVelocity(0);
+            //particle.destroy();
+        }, [], this);
+        return particle;
+    }
+
+    shoot() {
+        //const pointer = this.scene.memory.target;
+        const pointer = this.scene.input.activePointer;
+        const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        for(const obj of this.scene.memory.objects.getChildren()){
+            if(obj.radius > this.scene.cfg.sizeShoot){
+                let direction = new Phaser.Math.Vector2(worldPoint.x - obj.x, worldPoint.y - obj.y).normalize();
+                this.scene.socket.shoot(obj.x, obj.y, direction,this.scene.memory.room);
+                //this.createShootParticle(obj.x, obj.y, direction);
+                obj.radius -= this.scene.cfg.sizeShoot / 4;
+                this.updateSpriteSizeEat(obj,10);
+            }
         }
     }
     
