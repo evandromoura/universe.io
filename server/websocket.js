@@ -29,7 +29,7 @@ io.on('connection', socket => {
         const player = getPlayer(socket.id, room);
         player.objects = [];
         player.activeRoom = room;
-        player.objects.push({ socketid: socket.id, uid: generateUID(), radius: 10, position: { x: 400, y: 400 } });
+        player.objects.push({ socketid: socket.id, uid: generateUID(), radius: 100, position: { x: 400, y: 400 } });
         io.to(room).emit('message', player.nickname + ' is online');
         socket.emit('join_success', room);
         socket.emit('update', rooms[room]);
@@ -37,17 +37,18 @@ io.on('connection', socket => {
     });
 
     socket.on('disconnect', () => {
+        let socketid = socket.id;
         let room = players[socket.id].activeRoom;
         if (room) {
             let index = rooms[room].players.findIndex(obj => obj.socketid === socket.id);
             rooms[room].players.splice(index,1);
+            io.to(room).emit('playerleft',socketid);
         }
         delete players[socket.id];
     });
 
 
     socket.on('sendupdate', (objects, room) => {
-        console.log('Aqui ta recebendo',objects);
         if (socket && rooms[room] && rooms[room].players) {
             for(const player of rooms[room].players){
                 if(player.socketid === socket.id){

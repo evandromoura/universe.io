@@ -27,19 +27,13 @@ export class Engine{
         this.scene.physics.world.setBounds(0, 0, this.scene.cfg.graph.scene.width, this.scene.cfg.graph.scene.height);
     }
     createInitialObject(object){
-        this.scene.memory.objects.add(this.createObject(object.position.x,object.position.y,object.radius,this.scene.cfg.cooldown,this.scene.memory.nickname,object.uid));
-        console.log('INICIAL',this.scene.memory.objects);
-        // this.scene.memory.objects.add(this.createObject(300,400,50,this.scene.cfg.cooldown));
-        // this.scene.memory.objects.add(this.createObject(400,300,50,this.scene.cfg.cooldown));
-        // this.scene.memory.objects.add(this.createObject(500,700,50,this.scene.cfg.cooldown));
-        // this.scene.memory.objects.add(this.createObject(600,600,50,this.scene.cfg.cooldown));
-        // this.scene.memory.objects.add(this.createObject(700,500,50,this.scene.cfg.cooldown));
+        this.scene.memory.objects.add(this.createObject(object.position.x,object.position.y,object.radius,this.scene.cfg.cooldown,this.scene.memory.nickname,object.socketid,object.uid));
     }
     createInitialParticules(x,y,radius,coolDown){
         this.scene.memory.particles = this.scene.physics.add.group({collideWorldBounds:true});
         this.createParticles(this.scene.cfg.numberOfParticles);
     }
-    createObject(x,y,radius,coolDown,name,uid){
+    createObject(x,y,radius,coolDown,name,socketid,uid){
         let obj1 = this.scene.physics.add.sprite(x, y, 'gem');
         obj1.setDisplaySize(radius * 2, radius * 2);
         obj1.body.setSize(radius * 2, radius * 2,false);
@@ -50,7 +44,8 @@ export class Engine{
         obj1.coolDownSpeed = 0;
         obj1.radius = radius;
         obj1.uid = uid;
-        obj1.object = { uid: uid, radius: radius, position: { x: x, y: y } };
+        obj1.socketid = socketid;
+        obj1.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
         obj1.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
         obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
         return obj1;
@@ -66,6 +61,7 @@ export class Engine{
         obj1.radius = radius;
         obj1.socketid = socketid;
         obj1.uid = uid;
+        obj1.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
         obj1.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
         obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
         return obj1;
@@ -116,7 +112,7 @@ export class Engine{
                 let fontSizeScore = object.radius / 10;
                 object.bitmapText.setFontSize(fontSize);
                 object.bitmapScore.setFontSize(fontSizeScore);
-                object.bitmapScore.setText(object.radius);
+                object.bitmapScore.setText(object.radius.toFixed(2));
             }
         }
     }
@@ -136,7 +132,7 @@ export class Engine{
                     let fontSizeScore = object.radius / 10;
                     object.bitmapText.setFontSize(fontSize);
                     object.bitmapScore.setFontSize(fontSizeScore);
-                    object.bitmapScore.setText(object.radius);
+                    object.bitmapScore.setText(object.radius.toFixed(2));
                 }
 
             })
@@ -192,8 +188,11 @@ export class Engine{
                     object.y + direction.y * object.radius,
                     object.radius / 2,
                     this.scene.cfg.cooldown,
-                    this.scene.memory.nickname
+                    this.scene.memory.nickname,
+                    object.socketid,
+                    this.generateUID()
                 );
+                
                 arrayObj.push(newObject);
     
                 // Definir velocidade inicial
@@ -202,6 +201,7 @@ export class Engine{
                 newObject.coolDownSpeed = 50;    
     
                 object.radius /= 2;
+
                 this.updateSpriteSizeEat(object, 1000);
                 object.coolDown = this.scene.cfg.cooldown;
                 object.coolDownSpeed = 0; 
@@ -316,8 +316,8 @@ export class Engine{
         if(players){
             let findPlayer = false; 
             let findObject = false;
+            let findObjectMemory = false;
             for (const player of players){
-                console.log('PLAYER AQUI',player.socketid,this.scene.memory.player.socketid);
                 if(player.socketid !== this.scene.memory.player.socketid){
                     for(const playerMemory of this.scene.memory.players){
                         if(player.socketid === playerMemory.socketid){
@@ -333,23 +333,42 @@ export class Engine{
                                             this.updateSpriteSizeEat(objectMemory,10);
                                         }
                                     }
+                                    
                                 }
                                 if(!findObject){
                                     playerMemory.objectsPlayer.add(this.createObjectPlayer(
-                                        object.x,object.y,object.radius,object.name,object.socketid,object.uid
+                                        object.x,object.y,object.radius,player.nickname,object.socketid,object.uid
                                     ));
+                                }else{
+                                    findObject = false;
                                 }
                             }
+                            for(const objectMemory of playerMemory.objectsPlayer.getChildren()){
+                                findObjectMemory = false;
+                                for(const object of player.objects){
+                                    if(object.uid === objectMemory.uid){
+                                        findObjectMemory = true;
+                                    }
+                                }
+                                if(!findObjectMemory){
+                                    objectMemory.bitmapText.destroy();
+                                    objectMemory.bitmapScore.destroy();
+                                    objectMemory.destroy();
+                                }
+                            }
+
                         }
                     }
                     if(!findPlayer){
                         player.objectsPlayer = this.scene.physics.add.group({collideWorldBounds:true});
                         for(const object of player.objects){
                             player.objectsPlayer.add(this.createObjectPlayer(
-                                object.x,object.y,object.radius,object.name,object.socketid,object.uid
+                                object.x,object.y,object.radius,player.nickname,object.socketid,object.uid
                             ));
                         }
                         this.scene.memory.players.push(player);
+                    }else{
+                        findPlayer = false;
                     }
                     
                 }
@@ -358,20 +377,23 @@ export class Engine{
         }    
    
     }
-    drawPlayers() {
-        
-        // this.scene.memory.players.forEach(player=>{
-
-        //     player.objects.forEach(object =>{
-                
-        //         this.updateSpriteSizeEat(obj,duration);
-        //     })
-        //         player.radius = obj.radius;
-                     
-        //  });
-        
-        
-        
+    playerleft(socketid){
+        for(let i = 0; i < this.scene.memory.players.length;i++){
+            if(this.scene.memory.players[i].socketid === socketid){
+                console.log('Morreu com esses objetos');
+                console.log(this.scene.memory.players[i].objectsPlayer.getChildren());
+                this.scene.memory.players[i].objectsPlayer.getChildren().forEach(object=>{
+                    this.scene.graphics.explode(object.x,object.y);
+                    object.bitmapText.destroy();
+                    object.bitmapScore.destroy();
+                    object.destroy();
+                });
+                console.log('terminou com esses');
+                this.scene.memory.players[i].objectsPlayer.destroy(true);
+                this.scene.memory.players.splice(i,1);
+                break;
+            }
+        }
     }
 
     getObjectPlayer(uid){

@@ -2,6 +2,7 @@ import { Engine } from './engine.js';
 import { Memory } from './memory.js';
 import { Util } from './util.js';
 import { Socket } from './socket.js';
+import { Graphics } from './graphics.js';
 
 var scene;
 var busy = 0;
@@ -30,7 +31,7 @@ class Game extends Phaser.Scene{
         this.cfg = {
             graph:{ scene:{ width: 1920,height: 1080}, window:{width: 1680,height: 1050},
             zoom:{min:4,max:7}},
-            cooldown:1000,
+            cooldown:100000,
             cooldownSpeed:500,
             baseSpeed:3000,
             maxobject:10,
@@ -43,6 +44,7 @@ class Game extends Phaser.Scene{
         
         
         //CREATE INICIAL OBJECT
+        this.graphics = new Graphics(this);
         this.engine = new Engine(this);
         this.engine.init();
         this.engine.createScenario();
@@ -72,7 +74,6 @@ class Game extends Phaser.Scene{
         this.pilot();
         this.engine.updateText();
         this.sendInfoServer();
-        this.engine.drawPlayers();
         this.engine.updateTextPlayers();
     }
     pointermove(pointer){
@@ -108,7 +109,7 @@ class Game extends Phaser.Scene{
     sendInfoServer(){
         if(this.socket){
             if (new Date() - this.memory.lastUpdate > this.cfg.updateServerInterval) {
-                console.log('Aqui ta enviando',this.memory.objects.getChildren());
+                //console.log('Aqui ta enviando',this.compositeObjects());
                 this.socket.sendUpdate(this.compositeObjects(),this.memory.room);
 
             }    

@@ -10,9 +10,9 @@ export class Socket{
         this.socket.on('message', (message) => {});
 
         this.socket.on('login_success', (player) => {
-            console.log('login_sucesso',player);
             this.scene.memory.player = player;
         });
+
         this.socket.on('join_success', (room) => {
             this.scene.memory.activeRoom = room;
         });
@@ -26,13 +26,16 @@ export class Socket{
         });
 
         this.socket.on('removeparticule',(uid) =>{
-            console.log('RECEBEU O REMOVE',uid);
             this.scene.engine.deleteByUID(uid);
         });
 
         this.socket.on('updateplayers',(players) =>{
-            console.log('Recebeu no updateplayers',players);
+            //console.log('Recebeu no updateplayers',players);
              this.scene.engine.loadPlayers(players);
+        });
+
+        this.socket.on('playerleft',(socketid) =>{
+             this.scene.engine.playerleft(socketid);
         });
 
         this.socket.emit('login',{nickname:this.scene.memory.nickname});
