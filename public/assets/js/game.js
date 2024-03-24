@@ -3,6 +3,7 @@ import { Memory } from './memory.js';
 import { Util } from './util.js';
 import { Socket } from './socket.js';
 import { Graphics } from './graphics.js';
+import { BlackHole } from './blackhole.js';
 
 var scene;
 var busy = 0;
@@ -26,6 +27,7 @@ class Game extends Phaser.Scene{
         this.memory = new Memory();
         this.memory.nickname = Util.getUrlParameter('nickname');
         this.memory.room = Util.getUrlParameter('room');
+        this.blackHoles = [new BlackHole(this, 300, 300, 15)]; 
 
         // CONFIG
         this.cfg = {
@@ -75,6 +77,13 @@ class Game extends Phaser.Scene{
         this.engine.updateText();
         this.sendInfoServer();
         this.engine.updateTextPlayers();
+        this.memory.objects.getChildren().forEach(object => {
+            this.blackHoles.forEach(blackHole => {
+                if (blackHole.checkCollisionWithPlayer(object)) {
+                    this.divideObjectIntoFive(object);
+                }
+            });
+        });
     }
     pointermove(pointer){
         busy=0;
@@ -121,6 +130,20 @@ class Game extends Phaser.Scene{
             list.push(objectPhy.object);
         }
         return list;
+    }
+    divideObjectIntoFive(object) {
+        // const partSize = object.radius / Math.sqrt(5); // Dividir o tamanho para manter a massa total aproximadamente constante
+        // for (let i = 0; i < 5; i++) {
+        //     // Calcula a posição para cada parte
+        //     const angle = (i / 5) * 2 * Math.PI;
+        //     const dx = Math.cos(angle) * object.radius;
+        //     const dy = Math.sin(angle) * object.radius;
+        //     // Criação do novo objeto
+        //     let newObj = this.engine.createObject(object.x + dx, object.y + dy, partSize, object.coolDown, object.nickname, object.socketid, this.engine.generateUID());
+        //     this.memory.objects.add(newObj);
+        // }
+        // // Remove o objeto original
+        // object.destroy();
     }
      
 }
