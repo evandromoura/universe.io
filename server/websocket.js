@@ -7,92 +7,91 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-var players = {}; 
+var players = {};
 var rooms = {};
 const lobby = {};
 
 const cfg = {
-    numberOfParticles:250,
+    numberOfParticles: 250,
 }
 
 io.on('connection', socket => {
-    players[socket.id] = {socketid:socket.id,nickname:'',score:'',objects:[]};
+    players[socket.id] = { socketid: socket.id, nickname: '', score: '', objects: [] };
 
-    socket.on('login',(login)=>{
+    socket.on('login', (login) => {
         players[socket.id].nickname = login.nickname;
-        socket.emit('login_success',players[socket.id]);
+        socket.emit('login_success', players[socket.id]);
     })
- 
+
     socket.on('join', (room) => {
         socket.join(room);
         rooms[room].players.push(players[socket.id]);
-        const player = getPlayer(socket.id,room);
+        const player = getPlayer(socket.id, room);
         player.objects = [];
         player.activeRoom = room;
-        player.objects.push({socketid:socket.id,uid:generateUID(),radius:10,position : { x: 400, y: 400}});
-        io.to(room).emit('message',player.nickname+' is online');
-        socket.emit('join_success',room);
-        io.to(room).emit('update',rooms[room]);
-        socket.emit('initialObject',player.objects[0]);
+        player.objects.push({ socketid: socket.id, uid: generateUID(), radius: 10, position: { x: 400, y: 400 } });
+        io.to(room).emit('message', player.nickname + ' is online');
+        socket.emit('join_success', room);
+        socket.emit('update', rooms[room]);
+        socket.emit('initialObject', player.objects[0]);
     });
 
     socket.on('disconnect', () => {
-        if(players[socket.id].activeRoom){
-            delete rooms[players[socket.id].activeRoom].players[socket.id];
+        let room = players[socket.id].activeRoom;
+        if (room) {
+            let index = rooms[room].players.findIndex(obj => obj.socketid === socket.id);
+            rooms[room].players.splice(index,1);
         }
         delete players[socket.id];
     });
 
 
-    socket.on('sendupdate', (objects,room) => {
-        if(socket && rooms[room] && rooms[room].players && getPlayer(socket.id,room)){
-            getPlayer(socket.id,room).objects = objects;
-            for (let i = 0;i<rooms[room].players.length;i++){
-                socket.broadcast.to(room).emit('updateplayers',rooms[room].players);
+    socket.on('sendupdate', (objects, room) => {
+        console.log('Aqui ta recebendo',objects);
+        if (socket && rooms[room] && rooms[room].players) {
+            for(const player of rooms[room].players){
+                if(player.socketid === socket.id){
+                    player.objects = objects;    
+                    break;
+                }
             }
+            socket.broadcast.to(room).emit('updateplayers', rooms[room].players);
         }
     });
 
-    socket.on('eatparticle', (uid,room) => {
-        deleteByUID(uid,room)
-        socket.broadcast.to(room).emit('removeparticule',uid);
+    socket.on('eatparticle', (uid, room) => {
+        deleteByUID(uid, room)
+        socket.broadcast.to(room).emit('removeparticule', uid);
     });
 
-    
+
 });
 
-function broadcastRoom(room){
-    io.to(room).emit('update',rooms[room]);
-}
-
-function createRoom(room){
-}
-
-function getPlayer(socketid,room) {
-    if(rooms[room] && rooms[room].players){
+function getPlayer(socketid, room) {
+    if (rooms[room] && rooms[room].players) {
         const player = rooms[room].players.find(obj => obj.socketid === socketid);
         return player;
     }
     return null;
 }
 
-function findByUID(uid,room) {
+function findByUID(uid, room) {
     return rooms[room].particles.find(obj => obj.uid === uid);
 }
 
-function deleteByUID(uid,room) {
+function deleteByUID(uid, room) {
     let index = rooms[room].particles.findIndex(obj => obj.uid === uid);
-    if (index !== -1) { 
+    if (index !== -1) {
         rooms[room].particles.splice(index, 1);
     }
 }
 
-init = ()=>{
+init = () => {
     initRooms();
 }
 
-initRooms = ()=>{
-    rooms['SALA_1'] = {name:'SALA_1',cols: 1920,rows:1080,particles:[],traps:[],players:[]};
+initRooms = () => {
+    rooms['SALA_1'] = { name: 'SALA_1', cols: 1920, rows: 1080, particles: [], traps: [], players: [] };
     for (let i = 0; i < cfg.numberOfParticles; i++) {
         generateParticles(rooms['SALA_1']);
     }
@@ -106,13 +105,13 @@ function generateParticles(room) {
         y = Math.random() * room.rows;
         for (let player of room.players) {
             let distance = Math.sqrt((player.position.x - x) ** 2 + (player.position.y - y) ** 2);
-            if (distance < player.radius + 10) { 
+            if (distance < player.radius + 10) {
                 validPosition = false;
                 break;
             }
         }
     } while (!validPosition);
-    room.particles.push({ x, y, radius: 1 ,color:'red',uid:generateUID()});
+    room.particles.push({ x, y, radius: 1, color: 'red', uid: generateUID() });
 }
 
 function generateUID(length = 6) {

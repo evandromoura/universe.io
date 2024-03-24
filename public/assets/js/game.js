@@ -48,7 +48,6 @@ class Game extends Phaser.Scene{
         this.engine.createScenario();
         
         this.socket = new Socket(this).connect();
-        this.socket.login();
         
          
          
@@ -61,7 +60,6 @@ class Game extends Phaser.Scene{
         
         this.input.on('pointerdown', this.explode);    
 
-        //CONECTANDO AO SOCKET
         
         
     }
@@ -73,9 +71,9 @@ class Game extends Phaser.Scene{
         this.engine.zoom();
         this.pilot();
         this.engine.updateText();
-        this.engine.drawPlayers();
         this.sendInfoServer();
-        
+        this.engine.drawPlayers();
+        this.engine.updateTextPlayers();
     }
     pointermove(pointer){
         busy=0;
@@ -110,9 +108,18 @@ class Game extends Phaser.Scene{
     sendInfoServer(){
         if(this.socket){
             if (new Date() - this.memory.lastUpdate > this.cfg.updateServerInterval) {
-                this.socket.sendUpdate(this.memory.objects.getChildren(),this.memory.room);
+                console.log('Aqui ta enviando',this.memory.objects.getChildren());
+                this.socket.sendUpdate(this.compositeObjects(),this.memory.room);
+
             }    
         }
+    }
+    compositeObjects(){
+        let list = [];
+        for(const objectPhy of this.memory.objects.getChildren()){
+            list.push(objectPhy.object);
+        }
+        return list;
     }
      
 }
