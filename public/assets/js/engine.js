@@ -50,19 +50,24 @@ export class Engine{
         return obj1;
     }
     createObjectPlayer(x,y,radius,name,socketid,uid){
-        let obj1 = this.scene.physics.add.sprite(x, y, 'gem');
-        obj1.setDisplaySize(radius * 2, radius * 2);
-        obj1.body.setSize(radius * 2, radius * 2,false);
-        obj1.body.setCircle(radius);
-        obj1.body.setOffset(obj1.width / 2 - radius, obj1.height / 2 - radius);
-        obj1.body.setVelocity({x:10,y:10});
-        obj1.radius = radius;
-        obj1.socketid = socketid;
-        obj1.uid = uid;
-        obj1.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
-        obj1.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
-        obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
-        return obj1;
+        const objP = this.scene.physics.add.sprite(x, y, 'gem');
+        objP.setCollideWorldBounds(true);
+        objP.setDisplaySize(radius, radius);
+        objP.body.setSize(radius, radius,true);
+        let offsetX = (objP.width - radius) / 2;
+        let offsetY = (objP.height - radius) / 2;
+        objP.body.setCircle(radius / 2,offsetX,offsetY);
+        objP.body.onWorldBounds = true;
+        
+        
+        objP.coolDownSpeed = 0;
+        objP.radius = radius;
+        objP.uid = uid;
+        objP.socketid = socketid;
+        objP.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
+        objP.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
+        objP.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', objP.radius, 5).setOrigin(0.5,3);
+        return objP;
     }
     moveObjects(){
             const MAGNETIC_CONSTANT = 0.55; 
@@ -264,7 +269,7 @@ export class Engine{
             let offsetY = (obj.height - obj.radius) / 2;
             obj.body.setCircle(obj.radius / 2,offsetX,offsetY);
         }
-    } 
+    }  
     createParticles(numberOfParticles) {
         for (let i = 0; i < numberOfParticles; i++) {
             var particle =  this.scene.physics.add.sprite(
@@ -288,6 +293,7 @@ export class Engine{
                                 if(playerMemory.objectsPlayer){
                                     for( const objectMemory of playerMemory.objectsPlayer){
                                         if(object.uid === objectMemory.uid){
+                                            console.log('ENTROIUY NO ULTIMO IF',object);
                                             findObject = true;
                                             objectMemory.x = object.x;
                                             objectMemory.y = object.y;
