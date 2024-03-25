@@ -33,7 +33,7 @@ class Game extends Phaser.Scene{
         this.cfg = {
             graph:{scene:{ width: 1920,height: 1080}, window:{width: 1680,height: 1050},
             zoom:{min:4,max:7,factor:0.9}},
-            cooldown:100000,
+            cooldown:500,
             cooldownSpeed:500,
             baseSpeed:3000,
             maxobject:10,
@@ -43,9 +43,6 @@ class Game extends Phaser.Scene{
             updateServerInterval:2000,
             sizeShoot:5
         }
-
-        
-        
         //CREATE INICIAL OBJECT
         this.graphics = new Graphics(this);
         this.engine = new Engine(this);
@@ -53,38 +50,46 @@ class Game extends Phaser.Scene{
         this.engine.createScenario();
         
         this.socket = new Socket(this).connect();
-        
-         
          
         this.anims.create({key: 'explode',frames: 'boom',frameRate: 20,showOnStart: true,hideOnComplete: true});
-        //this.engine.createInitialParticules();
+        this.engine.createInitialParticules();
 
         //MOUSE
-        this.input.on('pointermove', this.pointermove);
-        this.input.keyboard.on('keydown-SPACE', () => {this.engine.split();});
-        this.input.on('pointerdown', this.explode);    
-        this.input.keyboard.on('keydown-W', () => {
-            this.engine.shoot();
-        });
+         this.input.on('pointermove', this.pointermove);
+         this.input.keyboard.on('keydown-SPACE', () => {this.engine.divide();});
+         this.input.on('pointerdown', this.explode);    
+         this.input.keyboard.on('keydown-W', () => {
+             this.engine.shoot();
+         });
+
+        //  this.physics.world.on('worldbounds', (body) => {
+            
+        //     //if (body.gameObject === meuSprite) {
+        //     //    this.criarExplosao(meuSprite.x, meuSprite.y);
+        //         this.explode(body.gameObject);
+        //     //}
+        //     //body.center.x
+        //     console.log('colidiu',body);
+        // });
     }
     update(){
-        scene.engine.updateText();
-        this.engine.checkCollisions();
-        this.engine.checkColisionObjects();
-        this.engine.checkColisionParticules();
-        this.engine.zoom();
-        this.pilot();
-        this.engine.updateText();
-        this.sendInfoServer();
-        this.engine.updateTextPlayers();
-        this.memory.objects.getChildren().forEach(object => {
-            this.blackHoles.forEach(blackHole => {
-                if (blackHole.checkCollisionWithPlayer(object)) {
-                    this.divideObjectIntoFive(object);
-                }
-            });
-        });
-        scene.engine.updateText();
+         this.sendInfoServer();
+         scene.engine.updateText();
+         this.engine.checkCollisions();
+         this.engine.checkColisionObjects();
+         this.engine.checkColisionParticules();
+         this.pilot();
+         this.engine.updateTextPlayers();
+         this.engine.zoom();
+         this.coolDownsub();
+    }
+    coolDownsub(){
+        for(const object of this.memory.objects){
+            
+            object.coolDown = object.coolDown > 0?object.coolDown - 1:0;
+            object.coolDownSpeed = object.coolDownSpeed > 0?object.coolDownSpeed - 1:0;
+            
+        }
     }
     pointermove(pointer){
         busy=0;
@@ -102,13 +107,13 @@ class Game extends Phaser.Scene{
     }
     explode(pointer){
         const boom = scene.add.sprite(0, 0, 'boom').setBlendMode('ADD').setScale(4).setVisible(false);
-        var point = scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        var point = pointer;
         boom.copyPosition(point).play('explode');
         const distance = new Phaser.Math.Vector2();
         const force = new Phaser.Math.Vector2();
         const acceleration = new Phaser.Math.Vector2();
 
-        for (const block of scene.memory.objects.getChildren()){
+        for (const block of scene.memory.objects){
             distance.copy(block.body.center).subtract(point);
             force.copy(distance).setLength(50000 / distance.lengthSq()).limit(1000);
             acceleration.copy(force).scale(1 / block.body.mass);
@@ -127,7 +132,7 @@ class Game extends Phaser.Scene{
     }
     compositeObjects(){
         let list = [];
-        for(const objectPhy of this.memory.objects.getChildren()){
+        for(const objectPhy of this.memory.objects){
             list.push(objectPhy.object);
         }
         return list;
@@ -159,7 +164,7 @@ const config = {
     parent: 'univers.io-game',
     physics: {
         default: 'arcade',
-        arcade: { debug: false }
+        arcade: { debug: true }
     }
 };
 

@@ -5,7 +5,7 @@ export class Engine{
     }
 
     init(){
-        this.scene.memory.objects = this.scene.physics.add.group({collideWorldBounds:true});
+        this.scene.memory.objects = [];
         this.scene.memory.players = [];
         this.scene.memory.particles = [];
         let obj = {position:{x:300,y:500,radius:34}};
@@ -20,19 +20,25 @@ export class Engine{
         this.scene.physics.world.setBounds(0, 0, this.scene.cfg.graph.scene.width, this.scene.cfg.graph.scene.height);
     }
     createInitialObject(object){
-        this.scene.memory.objects.add(this.createObject(object.position.x,object.position.y,object.radius,this.scene.cfg.cooldown,this.scene.memory.nickname,object.socketid,object.uid));
+        
+        this.scene.memory.objects.push(this.createObject(object.position.x,object.position.y,object.radius,this.scene.cfg.cooldown,this.scene.memory.nickname,object.socketid,object.uid));
+        
+
     }
     createInitialParticules(x,y,radius,coolDown){
-        this.scene.memory.particles = this.scene.physics.add.group({collideWorldBounds:true});
+        this.scene.memory.particles = [];
         this.createParticles(this.scene.cfg.numberOfParticles);
     }
     createObject(x,y,radius,coolDown,name,socketid,uid){
-        let obj1 = this.scene.physics.add.sprite(x, y, 'gem');
-        obj1.setDisplaySize(radius * 2, radius * 2);
-        obj1.body.setSize(radius * 2, radius * 2,false);
-        obj1.body.setCircle(radius);
-        obj1.body.setOffset(obj1.width / 2 - radius, obj1.height / 2 - radius);
-        obj1.body.setVelocity({x:10,y:10});
+        const obj1 = this.scene.physics.add.sprite(x, y, 'gem');
+        obj1.setCollideWorldBounds(true);
+        obj1.setDisplaySize(radius, radius);
+        obj1.body.setSize(radius, radius,true);
+        let offsetX = (obj1.width - radius) / 2;
+        let offsetY = (obj1.height - radius) / 2;
+        obj1.body.setCircle(radius / 2,offsetX,offsetY);
+        obj1.body.onWorldBounds = true;
+        
         obj1.coolDown = coolDown;
         obj1.coolDownSpeed = 0;
         obj1.radius = radius;
@@ -62,7 +68,7 @@ export class Engine{
             const MAGNETIC_CONSTANT = 0.55; 
             const MOUSE_ATTRACTION_SPEED = 10; 
             let target = this.scene.memory.target; 
-            let objects = this.scene.memory.objects.getChildren();
+            let objects = this.scene.memory.objects;
         
             objects.forEach((obj1, index) => {
                 if(obj1.coolDownSpeed == 0){
@@ -73,21 +79,16 @@ export class Engine{
                     let normDyMouse = dyMouse / distMouse;
                     let speed = MOUSE_ATTRACTION_SPEED * (300 / obj1.radius); 
                     speed = Phaser.Math.Clamp(speed, this.scene.cfg.speed.min, this.scene.cfg.speed.max);
-                    if(obj1.coolDownSpeed > 0){
-                        speed *= 10;
-                        obj1.coolDownSpeed -= 1;
+                    if(obj1.body && obj1.body.velocity){
+                        obj1.body.velocity.x = normDxMouse * speed;
+                        obj1.body.velocity.y = normDyMouse * speed;
                     }
-                    obj1.body.velocity.x = normDxMouse * speed;
-                    obj1.body.velocity.y = normDyMouse * speed;
-                }else{
-                    obj1.coolDownSpeed = Math.max(obj1.coolDownSpeed - 1,0);
                 }
-
             });
     }
     updateText(){
-        if(this.scene.memory.objects.getChildren().length > 0 && this.scene.memory.objects.getChildren()){
-            for (const object of this.scene.memory.objects.getChildren()){
+        if(this.scene.memory.objects.length > 0){
+            for (const object of this.scene.memory.objects){
                 object.object.x = object.x;
                 object.object.y = object.y;
                 object.object.radius = object.radius;
@@ -98,11 +99,15 @@ export class Engine{
                 object.bitmapScore.x = object.x;
                 object.bitmapScore.y = object.y;
     
-                let fontSize = object.radius / 2; 
-                let fontSizeScore = object.radius / 5;
-                object.bitmapText.setFontSize(fontSize);
-                object.bitmapScore.setFontSize(fontSizeScore);
-                object.bitmapScore.setText(object.radius.toFixed(2));
+                let fontSize = object.radius / 10; 
+                let fontSizeScore = object.radius / 10;
+                //console.log('font size:', fontSize);
+                object.bitmapText.setFontSize(fontSize < 0?1:fontSize);
+                object.bitmapScore.setFontSize(fontSizeScore < 0?1:fontSizeScore);
+                if(object.radius && object.bitmapScore){
+                    object.bitmapScore.setText(object.radius.toFixed(2));
+                }
+                
             }
         }
     }
@@ -110,7 +115,7 @@ export class Engine{
         //AQUI
         if(this.scene.memory.players.length > 0){
             this.scene.memory.players.forEach(player =>{
-                for (const object of player.objectsPlayer.getChildren()){
+                for (const object of player.objectsPlayer){
                     object.bitmapText.x = object.x;
                     object.bitmapText.y = object.y;
                     
@@ -129,10 +134,11 @@ export class Engine{
         }
     }
     zoom() {
-        
-        const objects = this.scene.memory.objects.getChildren();
-        if (objects.length === 0) return;
-
+        const objects = this.scene.memory.objects;
+        if (objects.length === 0) {
+            this.scene.cameras.main.setZoom(1);
+            return;
+        }
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
         // Encontra os limites englobando todos os objetos
@@ -163,62 +169,28 @@ export class Engine{
         zoomLevel = Phaser.Math.Clamp(zoomLevel, minZoom, maxZoom);
 
         // Aplica o zoom e centraliza a câmera nos objetos
-        this.scene.cameras.main.setZoom(zoomLevel);
-        this.scene.cameras.main.centerOn(centerX, centerY);
-    }
-    split() {
-        var arrayObj = [];
-        const mouseTarget = this.scene.memory.target;
-        for (const object of this.scene.memory.objects.getChildren()) {
-            if (object.radius > this.scene.cfg.minRadiusSplit) { 
-                const direction = new Phaser.Math.Vector2(mouseTarget.x - object.x, mouseTarget.y - object.y).normalize();
-                const initialSpeed = 300; 
-                const newObject = this.createObject(
-                    object.x + direction.x * object.radius, 
-                    object.y + direction.y * object.radius,
-                    object.radius / 2,
-                    this.scene.cfg.cooldown,
-                    this.scene.memory.nickname,
-                    object.socketid,
-                    this.generateUID()
-                );
-                
-                arrayObj.push(newObject);
-    
-                // Definir velocidade inicial
-                newObject.body.velocity.x = direction.x * initialSpeed;
-                newObject.body.velocity.y = direction.y * initialSpeed;
-                newObject.coolDownSpeed = 50;    
-    
-                object.radius /= 2;
-
-                this.updateSpriteSizeEat(object, 1000);
-                object.coolDown = this.scene.cfg.cooldown;
-                object.coolDownSpeed = 0; 
-                
-                //
-            }
+        if(zoomLevel){
+            this.scene.cameras.main.setZoom(zoomLevel);
+            this.scene.cameras.main.centerOn(centerX, centerY);
+        }else{
+            this.scene.cameras.main.setZoom(2);
         }
-        arrayObj.forEach(obj =>{
-            this.scene.memory.objects.add(obj);
-        })
     }
+    
     checkCollisions() {
-        if(this.scene.memory.objects.getChildren().length > 0){
-            let objects = this.scene.memory.objects.getChildren();
+        if(this.scene.memory.objects.length > 0){
+            let objects = this.scene.memory.objects;
             for (let i = 0; i < objects.length; i++) {
                 if(objects[i].coolDown > 0 && objects[i].coolDownSpeed == 0){
                     for (let j = i + 1; j < objects.length; j++) {
                         if(objects[j].coolDown > 0){
                             let obj1 = objects[i];
                             let obj2 = objects[j];
-                
-                            
                             let dx = obj2.x - obj1.x;
                             let dy = obj2.y - obj1.y;
                             let distance = Math.sqrt(dx * dx + dy * dy);
                             
-                            let minDistance = obj1.radius * 1.6;
+                            let minDistance = obj1.radius /4;
                             if (distance < minDistance) {
                             
                                 let overlap = minDistance - distance;
@@ -233,12 +205,8 @@ export class Engine{
                                 obj2.x += adjustX;
                                 obj2.y += adjustY;
                             }
-                        objects[j].coolDown -= 1;               
                         }    
                     }
-                objects[i].coolDown -= 1;
-                objects[i].coolDown = Math.max(objects[i].coolDown,0) ;   
-
                 }
                 
             }
@@ -246,32 +214,38 @@ export class Engine{
         
     }
     checkColisionObjects(){
-        if(this.scene.memory.objects.getChildren().length > 0){
-            for (const obj of this.scene.memory.objects.getChildren()){
+        if(this.scene.memory.objects.length > 0){
+            
+
+
+           
+            this.scene.memory.objects.forEach((obj, index) =>{
                 if(obj.coolDown == 0){
-                    for (const objRival of this.scene.memory.objects.getChildren()){
+                    this.scene.memory.objects.forEach((objRival, indexR) =>{
                         if(objRival.coolDown == 0){
                             if(obj != objRival){
                                 if (this.objectOverlapsParticle(obj, objRival)) {
+                                    console.log('Entrou no cooldown Colisions');
                                     obj.radius += objRival.radius;
                                     this.updateSpriteSizeEat(obj,500);
                                     objRival.bitmapText.destroy();
                                     objRival.bitmapScore.destroy();
                                     objRival.destroy();
+                                    this.scene.memory.objects.splice(indexR,1);
                                 }
                             }
                         }
-                    }
+                    });
                 }
-            }
+            });
         }            
     }
     checkColisionParticules(){
         if(this.scene.memory.particles){
             this.scene.memory.particles.forEach((particle,index)=>{
-                for (const obj of this.scene.memory.objects.getChildren()){
+                for (const obj of this.scene.memory.objects){
                     if (this.objectOverlapsParticle(obj, particle)) {
-                        obj.radius += particle.radius / (obj.radius / 2); 
+                        obj.radius += particle.radius / (obj.radius); 
                         //obj.radius += particle.radius; 
                         this.updateSpriteSizeEat(obj,10);
                         this.scene.socket.eatparticle(particle.uid,this.scene.memory.activeRoom);
@@ -283,12 +257,13 @@ export class Engine{
         }    
     }
     updateSpriteSizeEat(obj,duration){
-    
-        obj.setDisplaySize(obj.radius * 2, obj.radius * 2);
-        obj.body.setSize(obj.radius * 2, obj.radius * 2,false);
-        obj.body.setCircle(obj.radius);
-        obj.body.setOffset(obj.width / 2 - obj.radius, obj.height / 2 - obj.radius);
-
+        obj.setDisplaySize(obj.radius, obj.radius);
+        if(obj.body){
+            obj.body.setSize(obj.radius, obj.radius,true);
+            let offsetX = (obj.width - obj.radius) / 2;
+            let offsetY = (obj.height - obj.radius) / 2;
+            obj.body.setCircle(obj.radius / 2,offsetX,offsetY);
+        }
     } 
     createParticles(numberOfParticles) {
         for (let i = 0; i < numberOfParticles; i++) {
@@ -296,7 +271,7 @@ export class Engine{
                 Phaser.Math.Between(0, this.scene.physics.world.bounds.width),
                 Phaser.Math.Between(0, this.scene.physics.world.bounds.height),'flares');
                 particle.radius = 50;
-                this.scene.memory.particles.add(particle);
+                this.scene.memory.particles.push(particle);
         }            
     }
     loadPlayers(players){
@@ -311,7 +286,7 @@ export class Engine{
                             findPlayer = true;
                             for(const object of player.objects){
                                 if(playerMemory.objectsPlayer){
-                                    for( const objectMemory of playerMemory.objectsPlayer.getChildren()){
+                                    for( const objectMemory of playerMemory.objectsPlayer){
                                         if(object.uid === objectMemory.uid){
                                             findObject = true;
                                             objectMemory.x = object.x;
@@ -323,14 +298,14 @@ export class Engine{
                                     
                                 }
                                 if(!findObject){
-                                    playerMemory.objectsPlayer.add(this.createObjectPlayer(
+                                    playerMemory.objectsPlayer.push(this.createObjectPlayer(
                                         object.x,object.y,object.radius,player.nickname,object.socketid,object.uid
                                     ));
                                 }else{
                                     findObject = false;
                                 }
                             }
-                            for(const objectMemory of playerMemory.objectsPlayer.getChildren()){
+                            for(const objectMemory of playerMemory.objectsPlayer){
                                 findObjectMemory = false;
                                 for(const object of player.objects){
                                     if(object.uid === objectMemory.uid){
@@ -347,9 +322,9 @@ export class Engine{
                         }
                     }
                     if(!findPlayer){
-                        player.objectsPlayer = this.scene.physics.add.group({collideWorldBounds:true});
+                        player.objectsPlayer = [];
                         for(const object of player.objects){
-                            player.objectsPlayer.add(this.createObjectPlayer(
+                            player.objectsPlayer.push(this.createObjectPlayer(
                                 object.x,object.y,object.radius,player.nickname,object.socketid,object.uid
                             ));
                         }
@@ -368,8 +343,8 @@ export class Engine{
         for(let i = 0; i < this.scene.memory.players.length;i++){
             if(this.scene.memory.players[i].socketid === socketid){
                 console.log('Morreu com esses objetos');
-                console.log(this.scene.memory.players[i].objectsPlayer.getChildren());
-                const objectsToDestroy = this.scene.memory.players[i].objectsPlayer.getChildren().slice();
+                console.log(this.scene.memory.players[i].objectsPlayer);
+                const objectsToDestroy = this.scene.memory.players[i].objectsPlayer.slice();
                 objectsToDestroy.forEach(object => {
                     this.scene.graphics.explode(object.x,object.y);
                     object.bitmapText.destroy();
@@ -378,7 +353,7 @@ export class Engine{
                 });
                 
                 console.log('terminou com esses');
-                console.log(this.scene.memory.players[i].objectsPlayer.getChildren());
+                console.log(this.scene.memory.players[i].objectsPlayer);
                 //this.scene.memory.players[i].objectsPlayer.destroy(true);
                 this.scene.memory.players.splice(i,1);
                 //break;
@@ -406,7 +381,7 @@ export class Engine{
     objectOverlapsParticle(circle, particle) {
         const dx = circle.x - particle.x;
         const dy = circle.y - particle.y;
-        return Math.sqrt(dx * dx + dy * dy) < circle.radius;
+        return Math.sqrt(dx * dx + dy * dy) < circle.radius / 2;
     }
     generateUID(length = 6) {
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -426,7 +401,6 @@ export class Engine{
     }
 
     createShootParticle(x, y, direction, speed = 300, lifespan = 500) {
-        console.log('Voltou no create');
         const particle = this.scene.physics.add.sprite(x, y, 'flares');
         particle.setDisplaySize(this.scene.cfg.sizeShoot, this.scene.cfg.sizeShoot); 
         particle.body.setVelocity(direction.x * speed, direction.y * speed);
@@ -441,7 +415,7 @@ export class Engine{
         //const pointer = this.scene.memory.target;
         const pointer = this.scene.input.activePointer;
         const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
-        for(const obj of this.scene.memory.objects.getChildren()){
+        for(const obj of this.scene.memory.objects){
             if(obj.radius > this.scene.cfg.sizeShoot){
                 let direction = new Phaser.Math.Vector2(worldPoint.x - obj.x, worldPoint.y - obj.y).normalize();
                 this.scene.socket.shoot(obj.x, obj.y, direction,this.scene.memory.room);
@@ -450,6 +424,47 @@ export class Engine{
                 this.updateSpriteSizeEat(obj,10);
             }
         }
+    }
+
+    divide() {
+        var arrayObj = [];
+        const pointer = this.scene.input.activePointer;
+        const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        for(const obj of this.scene.memory.objects){
+            if(obj.radius > 10){
+                let direction = new Phaser.Math.Vector2(worldPoint.x - obj.x, worldPoint.y - obj.y).normalize();
+
+                const deslocamento = 1;
+                const startX = obj.x + direction.x * deslocamento;
+                const startY = obj.y + direction.y * deslocamento;
+
+                const newObject = this.createObject(
+                    startX, 
+                    startY,
+                    obj.radius / 2,
+                    this.scene.cfg.cooldown,
+                    this.scene.memory.nickname,
+                    obj.socketid,
+                    this.generateUID()
+                );
+                newObject.coolDownSpeed = 5;    
+                this.createShootDivide(newObject,obj.x,obj.y,direction);
+                arrayObj.push(newObject);
+                obj.radius /= 2;
+                this.updateSpriteSizeEat(obj,10);
+            }
+        }
+         arrayObj.forEach(obj =>{
+             this.scene.memory.objects.push(obj);
+         })
+    }
+
+    createShootDivide(object,x, y, direction, speed = 150, lifespan = 800) {
+        object.body.setVelocity(direction.x * speed, direction.y * speed);
+        this.scene.time.delayedCall(lifespan, () => {
+                object.body.setVelocity(0);
+        }, [], this);
+        return object;
     }
     
 }
