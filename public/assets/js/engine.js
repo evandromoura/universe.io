@@ -31,12 +31,14 @@ export class Engine{
     }
     createObject(x,y,radius,coolDown,name,socketid,uid){
         const obj1 = this.scene.physics.add.sprite(x, y, 'gem');
+        obj1.setScale(0.5);
+        obj1.setOrigin(0.5, 0.5);
         obj1.setCollideWorldBounds(true);
-        obj1.setDisplaySize(radius, radius);
+        obj1.setDisplaySize(radius , radius );
         obj1.body.setSize(radius, radius,true);
         let offsetX = (obj1.width - radius) / 2;
         let offsetY = (obj1.height - radius) / 2;
-        obj1.body.setCircle(radius / 2,offsetX,offsetY);
+        obj1.body.setCircle(radius / 2);
         obj1.body.onWorldBounds = true;
         
         obj1.coolDown = coolDown;
@@ -129,9 +131,16 @@ export class Engine{
         
                     let fontSize = object.radius / 10; 
                     let fontSizeScore = object.radius / 10;
-                    object.bitmapText.setFontSize(fontSize);
-                    object.bitmapScore.setFontSize(fontSizeScore);
-                    object.bitmapScore.setText(object.radius.toFixed(2));
+                    try {
+                        object.bitmapText.setFontSize(fontSize);
+                        object.bitmapScore.setFontSize(fontSizeScore);
+                        if(object.radius && object.bitmapScore){
+                            object.bitmapScore.setText(object.radius.toFixed(2));
+                        }
+                        
+                    } catch (error) {
+                        
+                    }
                 }
 
             })
@@ -195,7 +204,7 @@ export class Engine{
                             let dy = obj2.y - obj1.y;
                             let distance = Math.sqrt(dx * dx + dy * dy);
                             
-                            let minDistance = obj1.radius /4;
+                            let minDistance = obj1.radius / 2 + obj2.radius / 2;
                             if (distance < minDistance) {
                             
                                 let overlap = minDistance - distance;
@@ -220,17 +229,12 @@ export class Engine{
     }
     checkColisionObjects(){
         if(this.scene.memory.objects.length > 0){
-            
-
-
-           
             this.scene.memory.objects.forEach((obj, index) =>{
                 if(obj.coolDown == 0){
                     this.scene.memory.objects.forEach((objRival, indexR) =>{
                         if(objRival.coolDown == 0){
                             if(obj != objRival){
                                 if (this.objectOverlapsParticle(obj, objRival)) {
-                                    console.log('Entrou no cooldown Colisions');
                                     obj.radius += objRival.radius;
                                     this.updateSpriteSizeEat(obj,500);
                                     objRival.bitmapText.destroy();
@@ -260,6 +264,35 @@ export class Engine{
                 }
             });
         }    
+    }
+
+    checkColisionPlayerObject(){
+
+        if(this.scene.memory.players){
+            this.scene.memory.players.forEach(player =>{
+                if(player.objectsPlayer){
+                    player.objectsPlayer.forEach((objRival,indexR) =>{
+
+                        this.scene.memory.objects.forEach((obj, index) =>{
+
+                            if (this.objectOverlapsPlayer(obj,objRival)) {
+                                
+                                obj.radius += objRival.radius /4;
+                                this.updateSpriteSizeEat(obj,500);
+                                player.objectsPlayer.splice(indexR,1);
+                                objRival.bitmapScore.destroy();
+                                objRival.bitmapText.destroy();
+                                objRival.destroy();
+                                this.scene.socket.eatobject(objRival.uid,this.scene.memory.room);
+                                console.log('enviei =',objRival.uid,'room ',this.scene.memory.room);
+                                
+                            }
+                        });
+                    });
+                }
+            })
+        }
+           
     }
     updateSpriteSizeEat(obj,duration){
         obj.setDisplaySize(obj.radius, obj.radius);
@@ -293,7 +326,6 @@ export class Engine{
                                 if(playerMemory.objectsPlayer){
                                     for( const objectMemory of playerMemory.objectsPlayer){
                                         if(object.uid === objectMemory.uid){
-                                            console.log('ENTROIUY NO ULTIMO IF',object);
                                             findObject = true;
                                             objectMemory.x = object.x;
                                             objectMemory.y = object.y;
@@ -389,6 +421,25 @@ export class Engine{
         const dy = circle.y - particle.y;
         return Math.sqrt(dx * dx + dy * dy) < circle.radius / 2;
     }
+   
+    objectOverlapsPlayer(object, objectPlayer) {
+        if (object.radius > objectPlayer.radius) {
+            const dx = object.x - objectPlayer.x;
+            const dy = object.y - objectPlayer.y;
+            const distanceBetweenCenters = Math.sqrt(dx * dx + dy * dy);
+            
+            // Determina qual objeto é maior
+            const largerObjectRadius = Math.max(object.radius, objectPlayer.radius);
+            const smallerObjectRadius = Math.min(object.radius, objectPlayer.radius);
+        
+            // A sobreposição completa ocorre se a distância entre os centros dos objetos
+            // for menor ou igual à diferença dos raios (considerando o objeto maior como referência)
+            return distanceBetweenCenters + smallerObjectRadius <= largerObjectRadius;
+        }else{
+            return false;
+        }    
+    }
+
     generateUID(length = 6) {
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let result = '';
@@ -398,7 +449,7 @@ export class Engine{
         }
         return result;
     }
-    deleteByUID(uid) {
+    deleteParticleByUID(uid) {
         let index = this.scene.memory.particles.findIndex(obj => obj.uid === uid);
         if (index !== -1) { 
             this.scene.memory.particles[index].destroy();
@@ -465,10 +516,46 @@ export class Engine{
          })
     }
 
+    removePlayerObject(uid){
+        let remove = false;
+        if(this.scene.memory.players){
+            this.scene.memory.players.forEach(player=>{
+                if(player.objectsPlayer){
+                    let index = player.objectsPlayer.findIndex(obj => obj.uid === uid);
+                    if (index !== -1) { 
+                        let x = player.objectsPlayer[index].x;
+                        let y = player.objectsPlayer[index].y;
+                        player.objectsPlayer[index].bitmapScore.destroy();
+                        player.objectsPlayer[index].bitmapText.destroy();
+                        player.objectsPlayer[index].destroy();
+                        player.objectsPlayer.splice(index,1);
+                        this.scene.graphics.explode(x,y);
+                        remove = true;
+                    }
+                }
+            });
+        }
+        if(!remove){
+            let index = this.scene.memory.objects.findIndex(obj => obj.uid === uid);
+                if (index !== -1) { 
+                    let x = this.scene.memory.objects[index].x;
+                    let y = this.scene.memory.objects[index].y;
+                    this.scene.memory.objects[index].bitmapScore.destroy();
+                    this.scene.memory.objects[index].bitmapText.destroy();
+                    this.scene.memory.objects[index].destroy();
+                    this.scene.memory.objects.splice(index,1);
+                    this.scene.graphics.explode(x,y);
+                    remove = true;
+                }
+        }
+    }
+
     createShootDivide(object,x, y, direction, speed = 150, lifespan = 800) {
         object.body.setVelocity(direction.x * speed, direction.y * speed);
         this.scene.time.delayedCall(lifespan, () => {
-                object.body.setVelocity(0);
+                if(object && object.body){
+                    object.body.setVelocity(0);
+                }
         }, [], this);
         return object;
     }

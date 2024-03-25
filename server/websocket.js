@@ -62,8 +62,13 @@ io.on('connection', socket => {
     });
 
     socket.on('eatparticle', (uid, room) => {
-        deleteByUID(uid, room)
+        deleteParticleByUID(uid, room)
         socket.broadcast.to(room).emit('removeparticule', uid);
+    });
+
+    socket.on('eatobject', (uid, room) => {
+        deleteObjectByUID(uid, room);
+        socket.broadcast.to(room).emit('removeobject', uid);
     });
 
     socket.on('shoot', (x,y,direction, room) => {
@@ -85,11 +90,22 @@ function findByUID(uid, room) {
     return rooms[room].particles.find(obj => obj.uid === uid);
 }
 
-function deleteByUID(uid, room) {
+function deleteParticleByUID(uid, room) {
     let index = rooms[room].particles.findIndex(obj => obj.uid === uid);
     if (index !== -1) {
         rooms[room].particles.splice(index, 1);
     }
+}
+
+function deleteObjectByUID(uid, room) {
+    for(const player of rooms[room].players){
+        let index = player.objects.findIndex(obj => obj.uid === uid);
+        if (index !== -1) {
+            player.objects.splice(index, 1);
+            break;
+        }
+    }
+    
 }
 
 init = () => {

@@ -26,7 +26,7 @@ export class Socket{
         });
 
         this.socket.on('removeparticule',(uid) =>{
-            this.scene.engine.deleteByUID(uid);
+            this.scene.engine.deleteParticleByUID(uid);
         });
 
         this.socket.on('updateplayers',(players) =>{
@@ -41,6 +41,10 @@ export class Socket{
         this.socket.on('globalshoot',(x,y,direction) =>{
             this.scene.engine.createShootParticle(x, y, direction);
        });
+       this.socket.on('removeobject',(uid) =>{
+            this.scene.engine.removePlayerObject(uid);
+        });
+       
 
         this.socket.emit('login',{nickname:this.scene.memory.nickname});
         this.socket.emit('join', this.scene.memory.room);
@@ -53,6 +57,9 @@ export class Socket{
 
     eatparticle(uid,room){
         this.socket.emit('eatparticle',uid,room);
+    }
+    eatobject(uid,room){
+        this.socket.emit('eatobject',uid,room);
     }
 
     shoot(x,y,direction,room){

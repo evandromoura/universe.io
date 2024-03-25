@@ -13,7 +13,7 @@ class Game extends Phaser.Scene{
     }
 
     preload (){
-        this.load.image('gem','assets/img/obj/gem.png');
+        this.load.image('gem','assets/img/obj/gem2.png');
         this.load.image('bg', 'assets/img/bg/bg.jpg');
         this.load.bitmapFont('atari', 'assets/engine/fonts/bitmap/atari-smooth.png', 'assets/engine/fonts/bitmap/atari-smooth.xml');
         this.load.atlas('flares', 'assets/engine/particles/flares.png', 'assets/engine/particles/flares.json');
@@ -33,7 +33,7 @@ class Game extends Phaser.Scene{
         this.cfg = {
             graph:{scene:{ width: 1920,height: 1080}, window:{width: 1680,height: 1050},
             zoom:{min:4,max:7,factor:0.9}},
-            cooldown:500,
+            cooldown:3000,
             cooldownSpeed:500,
             baseSpeed:3000,
             maxobject:10,
@@ -52,7 +52,7 @@ class Game extends Phaser.Scene{
         this.socket = new Socket(this).connect();
          
         this.anims.create({key: 'explode',frames: 'boom',frameRate: 20,showOnStart: true,hideOnComplete: true});
-        this.engine.createInitialParticules();
+        //this.engine.createInitialParticules();
 
         //MOUSE
          this.input.on('pointermove', this.pointermove);
@@ -75,10 +75,11 @@ class Game extends Phaser.Scene{
     update(){
          this.sendInfoServer();
          scene.engine.updateText();
+         this.pilot();
          this.engine.checkCollisions();
          this.engine.checkColisionObjects();
          this.engine.checkColisionParticules();
-         this.pilot();
+         this.engine.checkColisionPlayerObject();
          this.engine.updateTextPlayers();
          this.engine.zoom();
          this.coolDownsub();
