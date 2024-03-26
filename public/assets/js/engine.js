@@ -215,8 +215,8 @@ export class Engine{
 
         // Aplica o zoom e centraliza a câmera nos objetos
         if(zoomLevel){
-            //this.scene.cameras.main.setZoom(zoomLevel);
-            this.scene.cameras.main.setZoom(1);
+            this.scene.cameras.main.setZoom(zoomLevel);
+            //this.scene.cameras.main.setZoom(1);
             this.scene.cameras.main.centerOn(centerX, centerY);
         }else{
             this.scene.cameras.main.setZoom(2);
@@ -286,8 +286,12 @@ export class Engine{
             this.scene.memory.particles.forEach((particle,index)=>{
                 for (const obj of this.scene.memory.objects){
                     if (this.objectOverlapsParticle(obj, particle)) {
-                        obj.radius += particle.radius / (obj.radius); 
+                        //obj.radius += particle.radius / (obj.radius / 2); 
                         //obj.radius += particle.radius; 
+                        let baseMassGain = 1; // Massa base que seria ganha se não houvesse ajuste por tamanho
+                        let sizeAdjustmentFactor = 100; // Fator de ajuste para equilibrar o ganho de massa com o tamanho
+                        let massGain = baseMassGain / (1 + (obj.radius / sizeAdjustmentFactor));
+                        obj.radius += massGain;
                         this.updateSpriteSizeEat(obj,10);
                         this.scene.socket.eatparticle(particle.uid,this.scene.memory.activeRoom);
                         particle.destroy();

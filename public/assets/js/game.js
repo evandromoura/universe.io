@@ -40,7 +40,7 @@ class Game extends Phaser.Scene{
             cooldownSpeed:500,
             baseSpeed:3000,
             maxobject:10,
-            numberOfParticles:250,
+            numberOfParticles:1500,
             minRadiusSplit:20,
             speed:{min:10, max:80, factor:1000},
             updateServerInterval:2000,

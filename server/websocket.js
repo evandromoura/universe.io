@@ -191,7 +191,7 @@ function moveBot(room) {
     getRoom(room).bots.forEach(bot => {
         for(const objBot of bot.objects){
             // Se não há direção definida ou se é hora de mudar a direção aleatoriamente
-            if (!objBot.direction || Math.random() < 0.1) { // 10% chance de mudar de direção
+            if (!objBot.direction || Math.random() < 0.7) { // 10% chance de mudar de direção
                 objBot.direction = {
                     x: Math.random() * 2 - 1, // Gera um número entre -1 e 1
                     y: Math.random() * 2 - 1
