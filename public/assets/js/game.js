@@ -77,6 +77,7 @@ class Game extends Phaser.Scene{
     }
     update(){
          this.sendInfoServer();
+         this.sendBotInfoServer();
          scene.engine.updateText();
          this.pilot();
          this.engine.checkCollisions();
@@ -84,7 +85,6 @@ class Game extends Phaser.Scene{
          this.engine.checkColisionParticules();
          this.engine.checkColisionPlayerObject();
          this.engine.updateTextPlayers();
-         this.engine.updateTextBots();
          this.engine.zoom();
          this.coolDownsub();
     }
@@ -132,6 +132,15 @@ class Game extends Phaser.Scene{
                 //console.log('Aqui ta enviando',this.compositeObjects());
                 this.socket.sendUpdate(this.compositeObjects(),this.memory.room);
 
+            }    
+        }
+    }
+    sendBotInfoServer(){
+        if(this.socket){
+            if (new Date() - this.memory.lastUpdate > this.cfg.updateServerInterval) {
+                console.log('Todos ',this.memory.players);
+                console.log('Filtro',this.memory.players.filter(player =>{player.isBot ===true}));
+               this.socket.sendBotUpdate(this.memory.players.filter(player =>{player.isBot ===true}),this.memory.room);
             }    
         }
     }

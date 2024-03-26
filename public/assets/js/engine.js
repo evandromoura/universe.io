@@ -8,7 +8,6 @@ export class Engine{
         this.scene.memory.objects = [];
         this.scene.memory.players = [];
         this.scene.memory.particles = [];
-        this.scene.memory.bots = [];
         let obj = {position:{x:300,y:500,radius:34}};
         const particlesG = this.scene.add.particles('flares', {
             frame: [ 'red', 'yellow', 'green' ],
@@ -47,12 +46,14 @@ export class Engine{
         obj.bitmapScore =  this.scene.add.bitmapText(x, y, 'azo-fire', obj.radius, 5).setOrigin(0.5);
         return obj;
     }
-    createObjectPlayer(x,y,radius,name,socketid,uid){
+    createObjectPlayer(x,y,radius,name,socketid,uid,isBot){
+        console.log('ENTROU NO CREATE OBJECT PLAYER',x,y,radius,name,socketid,uid,isBot);
         const objP = this.scene.physics.add.sprite(x, y, 'gem');
         objP.radius = radius;
         let circle = (objP.radius * 100)/128;
         this.updateSpriteSizeEat(objP,10);
         objP.uid = uid;
+        objP.isBot = isBot;
         objP.socketid = socketid;
         objP.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
         objP.bitmapText =  this.scene.add.bitmapText(x, y, 'azo-fire', name, 5).setOrigin(0.5,2);
@@ -60,17 +61,6 @@ export class Engine{
         return objP;
     }
 
-    createObjectBot(x,y,radius,name,uid){
-        const objP = this.scene.physics.add.sprite(x, y, 'gembot');
-        objP.radius = radius;
-        let circle = (objP.radius * 100)/128;
-        this.updateSpriteSizeEat(objP,10);
-        objP.uid = uid;
-        objP.object = {uid: uid, radius: radius, position: { x: x, y: y } };
-        objP.bitmapText =  this.scene.add.bitmapText(x, y, 'azo-fire', name, 5).setOrigin(0.5,2);
-        objP.bitmapScore =  this.scene.add.bitmapText(x, y, 'azo-fire', objP.radius, 5).setOrigin(0.5);
-        return objP;
-    }
     moveObjects(){
         const MAGNETIC_CONSTANT = 0.55; 
         const MOUSE_ATTRACTION_SPEED = 10; 
@@ -147,36 +137,6 @@ export class Engine{
             
         }
     }
-
-    updateTextBots(){
-        //AQUI
-        if(this.scene.memory.bots.length > 0){
-            this.scene.memory.bots.forEach(bot =>{
-                for (const object of bot.objectsBot){
-                    object.bitmapText.x = object.x;
-                    object.bitmapText.y = object.y;
-                    
-                    object.bitmapScore.x = object.x;
-                    object.bitmapScore.y = object.y;
-        
-                    let fontSize = object.radius / 10; 
-                    let fontSizeScore = object.radius / 10;
-                    try {
-                        object.bitmapText.setFontSize(fontSize);
-                        object.bitmapScore.setFontSize(fontSizeScore);
-                        if(object.radius && object.bitmapScore){
-                            object.bitmapScore.setText(object.radius.toFixed(2));
-                        }
-                        
-                    } catch (error) {
-                        console.log(error);
-                    }
-                }
-
-            })
-            
-        }
-    }
     
     zoom() {
         const objects = this.scene.memory.objects;
@@ -215,8 +175,8 @@ export class Engine{
 
         // Aplica o zoom e centraliza a câmera nos objetos
         if(zoomLevel){
-            this.scene.cameras.main.setZoom(zoomLevel);
-            //this.scene.cameras.main.setZoom(1);
+            //this.scene.cameras.main.setZoom(zoomLevel);
+            this.scene.cameras.main.setZoom(1);
             this.scene.cameras.main.centerOn(centerX, centerY);
         }else{
             this.scene.cameras.main.setZoom(2);
@@ -355,21 +315,40 @@ export class Engine{
     }
     loadPlayers(players){
         if(players){
+            
             let findPlayer = false; 
             let findObject = false;
             let findObjectMemory = false;
             for (const player of players){
-                if(player.socketid !== this.scene.memory.player.socketid){
+                
+                if(player.uid !== this.scene.memory.player.uid){
+                    
                     for(const playerMemory of this.scene.memory.players){
-                        if(player.socketid === playerMemory.socketid){
+                        if(player.uid === playerMemory.uid){
+                            
                             findPlayer = true;
                             for(const object of player.objects){
                                 if(playerMemory.objectsPlayer){
+                                    
                                     for( const objectMemory of playerMemory.objectsPlayer){
                                         if(object.uid === objectMemory.uid){
+                                            
+                                            
                                             findObject = true;
-                                            objectMemory.x = object.x;
-                                            objectMemory.y = object.y;
+                                            if(!objectMemory.body){
+                                                this.scene.physics.world.enable([ objectMemory ]);
+                                            }
+
+                                            if(player.isBot !== true){
+                                                objectMemory.x = object.position.x;
+                                                objectMemory.y = object.position.y;
+                                            }else if(player.isBot === true){
+                                                // objectMemory.x = object.position.x + object.direction.x;
+                                                // objectMemory.y = object.position.y + object.direction.y;
+                                                objectMemory.body.velocity.x = object.direction.x;
+                                                objectMemory.body.velocity.y = object.direction.y;
+                                            }
+
                                             objectMemory.radius = object.radius;
                                             this.updateSpriteSizeEat(objectMemory,10);
                                         }
@@ -377,8 +356,9 @@ export class Engine{
                                     
                                 }
                                 if(!findObject){
+                                    console.log('Criou 1',object);
                                     playerMemory.objectsPlayer.push(this.createObjectPlayer(
-                                        object.x,object.y,object.radius,player.nickname,object.socketid,object.uid
+                                        object.position.x,object.position.y,object.radius,player.nickname,object.socketid,object.uid,player.isBot
                                     ));
                                 }else{
                                     findObject = false;
@@ -392,9 +372,9 @@ export class Engine{
                                     }
                                 }
                                 if(!findObjectMemory){
-                                    objectMemory.bitmapText.destroy();
-                                    objectMemory.bitmapScore.destroy();
-                                    objectMemory.destroy();
+                                    //  objectMemory.bitmapText.destroy();
+                                    //  objectMemory.bitmapScore.destroy();
+                                    //  objectMemory.destroy();
                                 }
                             }
 
@@ -403,8 +383,9 @@ export class Engine{
                     if(!findPlayer){
                         player.objectsPlayer = [];
                         for(const object of player.objects){
+                            console.log('Criou 2');
                             player.objectsPlayer.push(this.createObjectPlayer(
-                                object.x,object.y,object.radius,player.nickname,object.socketid,object.uid
+                                object.x,object.y,object.radius,player.nickname,object.socketid,object.uid,player.isBot
                             ));
                         }
                         this.scene.memory.players.push(player);
@@ -419,78 +400,6 @@ export class Engine{
    
     }
 
-
-    loadBots(bots){
-        if(bots){
-            let findBot = false; 
-            let findBotObject = false;
-            let findBotObjectMemory = false;
-            for (const bot of bots){
-                
-                    for(const botMemory of this.scene.memory.bots){
-                        if(bot.uid === botMemory.uid){
-                            findBot = true;
-                            for(const object of bot.objects){
-                                if(botMemory.objectsBot){
-                                    for( const objectBotMemory of botMemory.objectsBot){
-                                        if(object.uid === objectBotMemory.uid){
-                                            findBotObject = true;
-                                            // objectBotMemory.body.x = object.position.x;
-                                            // objectBotMemory.body.y = object.position.y;
-                                            objectBotMemory.body.velocity.x = object.position.x;
-                                            objectBotMemory.body.velocity.y = object.position.y;
-                                             //AQUI
-                                            
-                                            objectBotMemory.radius = object.radius;
-                                            this.updateSpriteSizeEat(objectBotMemory,10);
-                                        }
-                                    }
-                                    
-                                }
-                                if(!findBotObject){
-                                    console.log('adicionou aqui:',object);
-                                    botMemory.objectsBot.push(this.createObjectBot(
-                                        object.position.x,object.position.y,object.radius,bot.name,object.uid
-                                    ));
-                                }else{
-                                    findBotObject = false;
-                                }
-                            }
-                            console.log('atualizou a position para ',bot.objects[0].position.x);
-                            for(const objectMemory of botMemory.objectsBot){
-                                findBotObjectMemory = false;
-                                for(const object of bot.objects){
-                                    if(object.uid === objectMemory.uid){
-                                        findBotObjectMemory = true;
-                                    }
-                                }
-                                if(!findBotObjectMemory){
-                                    console.log('Destruiu:',objectMemory);
-                                    objectMemory.bitmapText.destroy();
-                                    objectMemory.bitmapScore.destroy();
-                                    objectMemory.destroy();
-                                }
-                            }
-
-                        }
-                    }
-                    if(!findBot){
-                        bot.objectsBot = [];
-                        for(const object of bot.objects){
-                            console.log('adicionou aqui 2:',object);
-                            bot.objectsBot.push(this.createObjectBot(
-                                object.position.x,object.position.y,object.radius,bot.name,object.uid
-                            ));
-                        }
-                        console.log('Criou o bot: ',bot);
-                        this.scene.memory.bots.push(bot);
-
-                    }else{
-                        findBot = false;
-                    }
-            }   
-        }    
-    }
     
     playerleft(socketid){
         for(let i = 0; i < this.scene.memory.players.length;i++){

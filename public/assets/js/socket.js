@@ -22,6 +22,7 @@ export class Socket{
         });
 
         this.socket.on('initialObject',(object) =>{
+            console.log('Chegou no initial Object');
             this.scene.engine.createInitialObject(object);
         });
 
@@ -30,7 +31,6 @@ export class Socket{
         });
 
         this.socket.on('updateplayers',(players) =>{
-            //console.log('Recebeu no updateplayers',players);
              this.scene.engine.loadPlayers(players);
         });
 
@@ -45,15 +45,13 @@ export class Socket{
             this.scene.engine.removePlayerObject(uid);
         });
 
-        this.socket.on('updatebots',(bots) =>{
-            //console.log('Bots',bots);
-            this.scene.engine.loadBots(bots);
-        });
-       
-
         this.socket.emit('login',{nickname:this.scene.memory.nickname});
         this.socket.emit('join', this.scene.memory.room);
         return this;
+    }
+
+    sendBotUpdate(bots,room){
+        this.socket.emit('sendbotupdate',bots,room);
     }
 
     sendUpdate(objects,room){

@@ -7,9 +7,9 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const Bot = require('./bot.js');
 
-var players = {};
+
+var players = [];
 var rooms = [];
 const bots = [];
 const lobby = {};
@@ -20,13 +20,18 @@ const cfg = {
     bot:{
         number:10,
         size: 10,
-    }
+    },
+    screen:{
+        width:1920,
+        height:1080
+    },
+    speed:{min:10, max:80, factor:1000}
     
     
 }
 
 io.on('connection', socket => {
-    players[socket.id] = { socketid: socket.id, nickname: '', score: '', objects: [] };
+    players[socket.id] = { uid:generateUID(), socketid: socket.id, nickname: '', score: '', objects: [],isBot:false};
 
     socket.on('login', (login) => {
         players[socket.id].nickname = login.nickname;
@@ -74,6 +79,17 @@ io.on('connection', socket => {
         }
     });
 
+    socket.on('sendbotupdate', (bots, room) => {
+        for(const bot of bots){
+            const playerBot = rooms[room].players.find(player=>{player.uid === bot.uid});
+            if(playerBot){
+                playerBot.objects = bot.objects;
+            }
+        }
+        socket.broadcast.to(room).emit('updateplayers', getRoom(room).players);
+
+    });
+
     socket.on('eatparticle', (uid, room) => {
         deleteParticleByUID(uid, room)
         socket.broadcast.to(room).emit('removeparticule', uid);
@@ -88,9 +104,12 @@ io.on('connection', socket => {
         io.to(room).emit('globalshoot', x,y,direction);
     });
 
+    
     setInterval(() => {
-        socket.emit('updatebots', getRoom('SALA_1').bots);
-    }, 1000);
+        if(getPlayersBot('SALA_1').length > 0 ){
+            socket.emit('updateplayers', getPlayersBot('SALA_1'));
+        }
+    }, 300);
 
 
 });
@@ -99,6 +118,20 @@ function getPlayer(socketid, room) {
     if (getRoom(room) && getRoom(room).players) {
         const player = getRoom(room).players.find(obj => obj.socketid === socketid);
         return player;
+    }
+    return null;
+}
+function getPlayersBot(room) {
+    if (getRoom(room) && getRoom(room).players) {
+        const players = getRoom(room).players.filter(obj => obj.isBot === true);
+        return players;
+    }
+    return null;
+}
+function getPlayers(room) {
+    if (getRoom(room) && getRoom(room).players) {
+        const players = getRoom(room).players.filter(obj => obj.isBot === false);
+        return players;
     }
     return null;
 }
@@ -163,21 +196,21 @@ function generateUID(length = 6) {
 }
 function createBots(){
     if(rooms){
-        console.log(rooms);
         for (const room of rooms){
+            let lenBot = getPlayersBot(room.name).length;
+            let lenPlayer = getPlayers(room.name).length;
 
-            if(room.bots.length < cfg.bot.number && 
-                    room.players.length + room.bots.length < room.limit){
-    
-                let numBot = cfg.bot.number - room.bots.length;
+            if(lenBot < cfg.bot.number){
+                let numBot = cfg.bot.number - lenBot;
                 for(let i=0;i<numBot;i++){
                     let uid = generateUID();
                     let position = findFreePosition(room.name, cfg.bot.size);
                     if(position){
-                        const bot = new Bot(uid,uid);
+
+                        const bot = { socketid: uid, nickname: uid, score: '', objects: [],isBot:true}
                         bot.objects = [];
                         bot.objects.push({ uid: generateUID(), radius: cfg.initialSize, position: { x: position.x, y: position.y } });
-                        room.bots.push(bot);
+                        room.players.push(bot);
                     }
                 }
                 
@@ -188,62 +221,84 @@ function createBots(){
 }
 
 function moveBot(room) {
-    getRoom(room).bots.forEach(bot => {
-        for(const objBot of bot.objects){
-            // Se não há direção definida ou se é hora de mudar a direção aleatoriamente
-            if (!objBot.direction || Math.random() < 0.7) { // 10% chance de mudar de direção
-                objBot.direction = {
-                    x: Math.random() * 2 - 1, // Gera um número entre -1 e 1
-                    y: Math.random() * 2 - 1
-                };
-            }
-
-            let ameaca = null;
-            let alvo = null;
-            let distanciaMinimaAlvo = Infinity;
-            let distanciaMinimaAmeaca = Infinity;
-            let algumLimiteDeSegurança = 20;
-
-            for(const player of getRoom(room).players){
-                for(const objPlayer of player.objects){
-                    let dx = objBot.position.x - objPlayer.position.x;
-                    let dy = objBot.position.y - objPlayer.position.y;
-                    let distancia = Math.sqrt(dx * dx + dy * dy);
-                    if (objPlayer.radius > objBot.radius && distancia < distanciaMinimaAmeaca) {
-                        ameaca = objPlayer;
-                        distanciaMinimaAmeaca = distancia;
-                    } else if (objPlayer.radius < objBot.radius && distancia < distanciaMinimaAlvo) {
-                        alvo = objPlayer;
-                        distanciaMinimaAlvo = distancia;
+    
+        getPlayersBot(room).forEach(bot => {
+            for(const objBot of bot.objects){
+                // Se não há direção definida ou se é hora de mudar a direção aleatoriamente
+                if (!objBot.direction || Math.random() < 0.7) { // 10% chance de mudar de direção
+                    objBot.direction = {
+                        x: Math.random() * (cfg.screen.width - objBot.radius) + 1,
+                        y: Math.random() * (cfg.screen.height - objBot.radius) + 1
+                    };
+                }
+    
+                let ameaca = null;
+                let alvo = null;
+                let distanciaMinimaAlvo = Infinity;
+                let distanciaMinimaAmeaca = Infinity;
+                let algumLimiteDeSegurança = 400;
+    
+                HUNTER:for(const player of getPlayers(room)){
+                    for(const objPlayer of player.objects){
+                        let dx = objBot.position.x - objPlayer.position.x;
+                        let dy = objBot.position.y - objPlayer.position.y;
+                        let distancia = Math.sqrt(dx * dx + dy * dy);
+                        if (objPlayer.radius > objBot.radius && distancia < distanciaMinimaAmeaca) {
+                            ameaca = objPlayer;
+                            distanciaMinimaAmeaca = distancia;
+                            break HUNTER;
+                        } else if (objPlayer.radius < objBot.radius && distancia < distanciaMinimaAlvo) {
+                            alvo = objPlayer;
+                            distanciaMinimaAlvo = distancia;
+                            break HUNTER;
+                        }
                     }
                 }
-            }
+                
+                let direcao = objBot.direction;
+    
+                if (ameaca && distanciaMinimaAmeaca < algumLimiteDeSegurança) {
+                    // Fuga da ameaça
+                    direcao.x = objBot.position.x - ameaca.position.x;
+                    direcao.y = objBot.position.y - ameaca.position.y;
+                    const norma = Math.sqrt(direcao.x * direcao.x + direcao.y * direcao.y);
+                    direcao.x /= norma;
+                    direcao.y /= norma;
+        
+                    let speed = 10; // Ajuste a velocidade conforme necessário
+                    objBot.position.x += direcao.x * speed;
+                    objBot.position.y += direcao.y * speed;
+        
+                    // Certifique-se de que o bot não saia dos limites do mapa
+                    objBot.position.x = Math.max(0, Math.min(objBot.position.x, getRoom(room).cols));
+                    objBot.position.y = Math.max(0, Math.min(objBot.position.y, getRoom(room).rows));
+                    objBot.direction = {
+                        x: direcao.x,
+                        y: direcao.y
+                    };
+                } else if (alvo) {
+                    // Perseguir alvo
 
-            let direcao = objBot.direction;
+                    let dxMouse = alvo.position.x - objBot.position.x;
+                    let dyMouse = alvo.y - objBot.position.y;
+                    let distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
+                    let normDxMouse = dxMouse / distMouse;
+                    let normDyMouse = dyMouse / distMouse;
+                    let speed = 10 * (10 / objBot.radius); 
+                    speed = Math.max(cfg.speed.min,speed, cfg.speed.max);
+                    
+                    direcao.x = normDxMouse * speed;
+                    direcao.y = normDyMouse * speed;
+                    objBot.direction = {
+                        x: direcao.x,
+                        y: direcao.y
+                    };
+                    
+                }
+                
+            }    
+        });
 
-            if (ameaca && distanciaMinimaAmeaca < algumLimiteDeSegurança) {
-                // Fuga da ameaça
-                direcao.x = objBot.position.x - ameaca.position.x;
-                direcao.y = objBot.position.y - ameaca.position.y;
-            } else if (alvo) {
-                // Perseguir alvo
-                direcao.x = alvo.position.x - objBot.position.x;
-                direcao.y = alvo.position.y - objBot.position.y;
-            }
-
-            const norma = Math.sqrt(direcao.x * direcao.x + direcao.y * direcao.y);
-            direcao.x /= norma;
-            direcao.y /= norma;
-
-            let speed = 10; // Ajuste a velocidade conforme necessário
-            objBot.position.x += direcao.x * speed;
-            objBot.position.y += direcao.y * speed;
-
-            // Certifique-se de que o bot não saia dos limites do mapa
-            objBot.position.x = Math.max(0, Math.min(objBot.position.x, getRoom(room).cols));
-            objBot.position.y = Math.max(0, Math.min(objBot.position.y, getRoom(room).rows));
-        }    
-    });
 }
 function findFreePosition(room, radius) {
     const maxAttempts = 100; // Limite de tentativas para encontrar uma posição livre

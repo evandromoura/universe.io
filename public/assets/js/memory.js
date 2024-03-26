@@ -3,7 +3,6 @@ export class Memory{
     {
         this.player = {};            
         this.players = [];
-        this.bots = [];
         this.activeRoom = "";
         this.nickname = "";
         this.room = "";
@@ -12,6 +11,7 @@ export class Memory{
         this.target = {x:0,y:0};
         this.coolDownZoom = 0;
         this.lastUpdate = new Date();
+        this.lastUpdateBot = new Date();
     }
 
     
