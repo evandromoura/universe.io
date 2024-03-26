@@ -14,6 +14,7 @@ class Game extends Phaser.Scene{
 
     preload (){
         this.load.image('gem','assets/img/obj/gem.png');
+        this.load.image('gembot','assets/img/obj/gembot.png');
         this.load.image('bg', 'assets/img/bg/bg.jpg');
         this.load.bitmapFont('atari', 'assets/engine/fonts/bitmap/atari-smooth.png', 'assets/engine/fonts/bitmap/atari-smooth.xml');
         this.load.bitmapFont('azo-fire', 'assets/engine/fonts/bitmap/azo-fire.png', 'assets/engine/fonts/bitmap/azo-fire.xml');
@@ -83,6 +84,7 @@ class Game extends Phaser.Scene{
          this.engine.checkColisionParticules();
          this.engine.checkColisionPlayerObject();
          this.engine.updateTextPlayers();
+         this.engine.updateTextBots();
          this.engine.zoom();
          this.coolDownsub();
     }

@@ -44,6 +44,11 @@ export class Socket{
        this.socket.on('removeobject',(uid) =>{
             this.scene.engine.removePlayerObject(uid);
         });
+
+        this.socket.on('updatebots',(bots) =>{
+            //console.log('Bots',bots);
+            this.scene.engine.loadBots(bots);
+        });
        
 
         this.socket.emit('login',{nickname:this.scene.memory.nickname});

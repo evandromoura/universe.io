@@ -3,6 +3,7 @@ export class Memory{
     {
         this.player = {};            
         this.players = [];
+        this.bots = [];
         this.activeRoom = "";
         this.nickname = "";
         this.room = "";

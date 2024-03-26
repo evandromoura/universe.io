@@ -8,6 +8,7 @@ export class Engine{
         this.scene.memory.objects = [];
         this.scene.memory.players = [];
         this.scene.memory.particles = [];
+        this.scene.memory.bots = [];
         let obj = {position:{x:300,y:500,radius:34}};
         const particlesG = this.scene.add.particles('flares', {
             frame: [ 'red', 'yellow', 'green' ],
@@ -58,27 +59,39 @@ export class Engine{
         objP.bitmapScore =  this.scene.add.bitmapText(x, y, 'azo-fire', objP.radius, 5).setOrigin(0.5);
         return objP;
     }
+
+    createObjectBot(x,y,radius,name,uid){
+        const objP = this.scene.physics.add.sprite(x, y, 'gembot');
+        objP.radius = radius;
+        let circle = (objP.radius * 100)/128;
+        this.updateSpriteSizeEat(objP,10);
+        objP.uid = uid;
+        objP.object = {uid: uid, radius: radius, position: { x: x, y: y } };
+        objP.bitmapText =  this.scene.add.bitmapText(x, y, 'azo-fire', name, 5).setOrigin(0.5,2);
+        objP.bitmapScore =  this.scene.add.bitmapText(x, y, 'azo-fire', objP.radius, 5).setOrigin(0.5);
+        return objP;
+    }
     moveObjects(){
-            const MAGNETIC_CONSTANT = 0.55; 
-            const MOUSE_ATTRACTION_SPEED = 10; 
-            let target = this.scene.memory.target; 
-            let objects = this.scene.memory.objects;
-        
-            objects.forEach((obj1, index) => {
-                if(obj1.coolDownSpeed == 0){
-                    let dxMouse = target.x - obj1.x;
-                    let dyMouse = target.y - obj1.y;
-                    let distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
-                    let normDxMouse = dxMouse / distMouse;
-                    let normDyMouse = dyMouse / distMouse;
-                    let speed = MOUSE_ATTRACTION_SPEED * (300 / obj1.radius); 
-                    speed = Phaser.Math.Clamp(speed, this.scene.cfg.speed.min, this.scene.cfg.speed.max);
-                    if(obj1.body && obj1.body.velocity){
-                        obj1.body.velocity.x = normDxMouse * speed;
-                        obj1.body.velocity.y = normDyMouse * speed;
-                    }
+        const MAGNETIC_CONSTANT = 0.55; 
+        const MOUSE_ATTRACTION_SPEED = 10; 
+        let target = this.scene.memory.target; 
+        let objects = this.scene.memory.objects;
+    
+        objects.forEach((obj1, index) => {
+            if(obj1.coolDownSpeed == 0){
+                let dxMouse = target.x - obj1.x;
+                let dyMouse = target.y - obj1.y;
+                let distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
+                let normDxMouse = dxMouse / distMouse;
+                let normDyMouse = dyMouse / distMouse;
+                let speed = MOUSE_ATTRACTION_SPEED * (300 / obj1.radius); 
+                speed = Phaser.Math.Clamp(speed, this.scene.cfg.speed.min, this.scene.cfg.speed.max);
+                if(obj1.body && obj1.body.velocity){
+                    obj1.body.velocity.x = normDxMouse * speed;
+                    obj1.body.velocity.y = normDyMouse * speed;
                 }
-            });
+            }
+        });
     }
     updateText(){
         if(this.scene.memory.objects.length > 0){
@@ -107,7 +120,6 @@ export class Engine{
         }
     }
     updateTextPlayers(){
-        //AQUI
         if(this.scene.memory.players.length > 0){
             this.scene.memory.players.forEach(player =>{
                 for (const object of player.objectsPlayer){
@@ -128,6 +140,36 @@ export class Engine{
                         
                     } catch (error) {
                         
+                    }
+                }
+
+            })
+            
+        }
+    }
+
+    updateTextBots(){
+        //AQUI
+        if(this.scene.memory.bots.length > 0){
+            this.scene.memory.bots.forEach(bot =>{
+                for (const object of bot.objectsBot){
+                    object.bitmapText.x = object.x;
+                    object.bitmapText.y = object.y;
+                    
+                    object.bitmapScore.x = object.x;
+                    object.bitmapScore.y = object.y;
+        
+                    let fontSize = object.radius / 10; 
+                    let fontSizeScore = object.radius / 10;
+                    try {
+                        object.bitmapText.setFontSize(fontSize);
+                        object.bitmapScore.setFontSize(fontSizeScore);
+                        if(object.radius && object.bitmapScore){
+                            object.bitmapScore.setText(object.radius.toFixed(2));
+                        }
+                        
+                    } catch (error) {
+                        console.log(error);
                     }
                 }
 
@@ -173,7 +215,8 @@ export class Engine{
 
         // Aplica o zoom e centraliza a câmera nos objetos
         if(zoomLevel){
-            this.scene.cameras.main.setZoom(zoomLevel);
+            //this.scene.cameras.main.setZoom(zoomLevel);
+            this.scene.cameras.main.setZoom(1);
             this.scene.cameras.main.centerOn(centerX, centerY);
         }else{
             this.scene.cameras.main.setZoom(2);
@@ -371,6 +414,80 @@ export class Engine{
         }    
    
     }
+
+
+    loadBots(bots){
+        if(bots){
+            let findBot = false; 
+            let findBotObject = false;
+            let findBotObjectMemory = false;
+            for (const bot of bots){
+                
+                    for(const botMemory of this.scene.memory.bots){
+                        if(bot.uid === botMemory.uid){
+                            findBot = true;
+                            for(const object of bot.objects){
+                                if(botMemory.objectsBot){
+                                    for( const objectBotMemory of botMemory.objectsBot){
+                                        if(object.uid === objectBotMemory.uid){
+                                            findBotObject = true;
+                                            // objectBotMemory.body.x = object.position.x;
+                                            // objectBotMemory.body.y = object.position.y;
+                                            objectBotMemory.body.velocity.x = object.position.x;
+                                            objectBotMemory.body.velocity.y = object.position.y;
+                                             //AQUI
+                                            
+                                            objectBotMemory.radius = object.radius;
+                                            this.updateSpriteSizeEat(objectBotMemory,10);
+                                        }
+                                    }
+                                    
+                                }
+                                if(!findBotObject){
+                                    console.log('adicionou aqui:',object);
+                                    botMemory.objectsBot.push(this.createObjectBot(
+                                        object.position.x,object.position.y,object.radius,bot.name,object.uid
+                                    ));
+                                }else{
+                                    findBotObject = false;
+                                }
+                            }
+                            console.log('atualizou a position para ',bot.objects[0].position.x);
+                            for(const objectMemory of botMemory.objectsBot){
+                                findBotObjectMemory = false;
+                                for(const object of bot.objects){
+                                    if(object.uid === objectMemory.uid){
+                                        findBotObjectMemory = true;
+                                    }
+                                }
+                                if(!findBotObjectMemory){
+                                    console.log('Destruiu:',objectMemory);
+                                    objectMemory.bitmapText.destroy();
+                                    objectMemory.bitmapScore.destroy();
+                                    objectMemory.destroy();
+                                }
+                            }
+
+                        }
+                    }
+                    if(!findBot){
+                        bot.objectsBot = [];
+                        for(const object of bot.objects){
+                            console.log('adicionou aqui 2:',object);
+                            bot.objectsBot.push(this.createObjectBot(
+                                object.position.x,object.position.y,object.radius,bot.name,object.uid
+                            ));
+                        }
+                        console.log('Criou o bot: ',bot);
+                        this.scene.memory.bots.push(bot);
+
+                    }else{
+                        findBot = false;
+                    }
+            }   
+        }    
+    }
+    
     playerleft(socketid){
         for(let i = 0; i < this.scene.memory.players.length;i++){
             if(this.scene.memory.players[i].socketid === socketid){
