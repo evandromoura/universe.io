@@ -140,19 +140,29 @@ export class Engine{
     
     zoom() {
         const objects = this.scene.memory.objects;
-        if (objects.length === 0) {
-            this.scene.cameras.main.setZoom(1);
-            return;
-        }
+        
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
         // Encontra os limites englobando todos os objetos
-        objects.forEach(object => {
-            minX = Math.min(minX, object.x - object.displayWidth / 2);
-            maxX = Math.max(maxX, object.x + object.displayWidth / 2);
-            minY = Math.min(minY, object.y - object.displayHeight / 2);
-            maxY = Math.max(maxY, object.y + object.displayHeight / 2);
-        });
+        if (objects.length > 0) {
+            objects.forEach(object => {
+                minX = Math.min(minX, object.x - object.displayWidth / 2);
+                maxX = Math.max(maxX, object.x + object.displayWidth / 2);
+                minY = Math.min(minY, object.y - object.displayHeight / 2);
+                maxY = Math.max(maxY, object.y + object.displayHeight / 2);
+            });
+        }    
+
+        if (objects.length === 0) {
+            for(const player of this.scene.memory.players){
+                player.objects.forEach(object => {
+                    minX = Math.min(minX, object.x - object.displayWidth / 2);
+                    maxX = Math.max(maxX, object.x + object.displayWidth / 2);
+                    minY = Math.min(minY, object.y - object.displayHeight / 2);
+                    maxY = Math.max(maxY, object.y + object.displayHeight / 2);
+                });
+            }
+        }
 
         // Calcula o centro e o tamanho da área que engloba todos os objetos
         const centerX = (minX + maxX) / 2;
@@ -175,11 +185,11 @@ export class Engine{
 
         // Aplica o zoom e centraliza a câmera nos objetos
         if(zoomLevel){
-            //this.scene.cameras.main.setZoom(zoomLevel);
-            this.scene.cameras.main.setZoom(1);
+            this.scene.cameras.main.setZoom(zoomLevel);
+            //this.scene.cameras.main.setZoom(1);
             this.scene.cameras.main.centerOn(centerX, centerY);
         }else{
-            this.scene.cameras.main.setZoom(2);
+            this.scene.cameras.main.setZoom(1);
         }
     }
     
@@ -282,6 +292,14 @@ export class Engine{
                                 this.scene.socket.eatobject(objRival.uid,this.scene.memory.room);
                                 console.log('enviei =',objRival.uid,'room ',this.scene.memory.room);
                                 
+                            }else if (this.objectOverlapsPlayer(objRival,obj)) {
+                                console.log('Obj Rival =',objRival,objRival.isBot === true);
+                                if(objRival.isBot === true){
+                                    this.scene.socket.eatobject(obj.uid,this.scene.memory.room);
+                                    //  objRival.radius += objRival.radius /4;
+                                    //  this.updateSpriteSizeEat(obj,500);
+
+                                }
                             }
                         });
                     });
@@ -343,10 +361,10 @@ export class Engine{
                                                 objectMemory.x = object.position.x;
                                                 objectMemory.y = object.position.y;
                                             }else if(player.isBot === true){
-                                                // objectMemory.x = object.position.x + object.direction.x;
-                                                // objectMemory.y = object.position.y + object.direction.y;
-                                                objectMemory.body.velocity.x = object.direction.x;
-                                                objectMemory.body.velocity.y = object.direction.y;
+                                                objectMemory.body.x = object.position.x;
+                                                 objectMemory.body.y = object.position.y;
+                                                objectMemory.body.velocity.x += object.direction.x;
+                                                objectMemory.body.velocity.y += object.direction.y;
                                             }
 
                                             objectMemory.radius = object.radius;

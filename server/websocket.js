@@ -97,7 +97,7 @@ io.on('connection', socket => {
 
     socket.on('eatobject', (uid, room) => {
         deleteObjectByUID(uid, room);
-        socket.broadcast.to(room).emit('removeobject', uid);
+        io.to(room).emit('removeobject', uid);
     });
 
     socket.on('shoot', (x,y,direction, room) => {
@@ -148,7 +148,7 @@ function deleteParticleByUID(uid, room) {
 }
 
 function deleteObjectByUID(uid, room) {
-    for(const player of getRoom(room).players){
+    for(const player of getPlayers(room)){
         let index = player.objects.findIndex(obj => obj.uid === uid);
         if (index !== -1) {
             player.objects.splice(index, 1);
@@ -220,7 +220,7 @@ function createBots(){
     
 }
 
-function moveBot(room) {
+function moveBot2(room) {
     
         getPlayersBot(room).forEach(bot => {
             for(const objBot of bot.objects){
@@ -300,6 +300,96 @@ function moveBot(room) {
         });
 
 }
+function moveBot(room) {
+    getPlayersBot(room).forEach(bot => {
+        bot.objects.forEach(objBot => {
+            // Se não há direção definida ou se é hora de mudar a direção aleatoriamente
+            if (!objBot.direction || Math.random() < 0.05) { // Reduz a chance de mudança abrupta de direção
+                let angle = Math.random() * Math.PI * 2; // Ângulo aleatório em radianos
+                objBot.direction = {
+                    x: Math.cos(angle), // Direção X baseada no ângulo
+                    y: Math.sin(angle)  // Direção Y baseada no ângulo
+                };
+            }
+
+            
+
+            let speed = 10 * (10 / objBot.radius); // Velocidade inversamente proporcional ao tamanho do bot
+            speed = Math.max(cfg.speed.min, Math.min(speed, cfg.speed.max)); // Limita a velocidade entre os valores min e max definidos
+
+            // Calcula a nova posição com base na direção e velocidade
+            objBot.position.x += objBot.direction.x * speed;
+            objBot.position.y += objBot.direction.y * speed;
+
+            // Certifique-se de que o bot não saia dos limites do mapa
+            objBot.position.x = Math.max(0, Math.min(objBot.position.x, getRoom(room).cols - objBot.radius));
+            objBot.position.y = Math.max(0, Math.min(objBot.position.y, getRoom(room).rows - objBot.radius));
+
+            if (objBot.position.x <= 0 || objBot.position.x >= getRoom(room).cols) {
+                objBot.direction.x *= -1; // Inverte a direção X
+            }
+            if (objBot.position.y <= 0 || objBot.position.y >= getRoom(room).rows) {
+                objBot.direction.y *= -1; // Inverte a direção Y
+            }
+            // Agora, ajuste a direção com base em alvos e ameaças
+            let direcaoAlvoOuAmeaca = ajustarDirecaoBaseadaEmAlvosEAmeacas(objBot, room);
+            if (direcaoAlvoOuAmeaca) {
+                objBot.direction = direcaoAlvoOuAmeaca;
+            }
+        });
+    });
+}
+
+function ajustarDirecaoBaseadaEmAlvosEAmeacas(objBot, room) {
+    let ameacaMaisProxima = null;
+    let alvoMaisProximo = null;
+    let distanciaMinimaAmeaca = Infinity;
+    let distanciaMinimaAlvo = Infinity;
+    const algumLimiteDeSegurança = 400; // Define um limite de segurança para começar a fugir
+
+    // Itera por todos os jogadores para encontrar alvos e ameaças
+    getPlayers(room).forEach(player => {
+        player.objects.forEach(objPlayer => {
+            let dx = objBot.position.x - objPlayer.position.x;
+            let dy = objBot.position.y - objPlayer.position.y;
+            let distancia = Math.sqrt(dx * dx + dy * dy);
+
+            if (objPlayer.radius > objBot.radius && distancia < distanciaMinimaAmeaca) {
+                // Encontrou uma ameaça mais próxima
+                ameacaMaisProxima = objPlayer;
+                distanciaMinimaAmeaca = distancia;
+            } else if (objPlayer.radius < objBot.radius && distancia < distanciaMinimaAlvo) {
+                // Encontrou um alvo mais próximo
+                alvoMaisProximo = objPlayer;
+                distanciaMinimaAlvo = distancia;
+            }
+        });
+    });
+
+    if (ameacaMaisProxima && distanciaMinimaAmeaca < algumLimiteDeSegurança) {
+        // Fuga da ameaça
+        let direcaoX = objBot.position.x - ameacaMaisProxima.position.x;
+        let direcaoY = objBot.position.y - ameacaMaisProxima.position.y;
+        return normalizarDirecao(direcaoX, direcaoY);
+    } else if (alvoMaisProximo) {
+        // Perseguir alvo
+        let direcaoX = alvoMaisProximo.position.x - objBot.position.x;
+        let direcaoY = alvoMaisProximo.position.y - objBot.position.y;
+        return normalizarDirecao(direcaoX, direcaoY);
+    }
+
+    // Não há necessidade de ajustar a direção
+    return null;
+}
+
+function normalizarDirecao(direcaoX, direcaoY) {
+    const norma = Math.sqrt(direcaoX * direcaoX + direcaoY * direcaoY);
+    return {
+        x: direcaoX / norma,
+        y: direcaoY / norma
+    };
+}
+
 function findFreePosition(room, radius) {
     const maxAttempts = 100; // Limite de tentativas para encontrar uma posição livre
     let attempts = 0;

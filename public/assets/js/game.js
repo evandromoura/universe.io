@@ -90,7 +90,6 @@ class Game extends Phaser.Scene{
     }
     coolDownsub(){
         for(const object of this.memory.objects){
-            
             object.coolDown = object.coolDown > 0?object.coolDown - 1:0;
             object.coolDownSpeed = object.coolDownSpeed > 0?object.coolDownSpeed - 1:0;
             
@@ -178,7 +177,7 @@ const config = {
     parent: 'univers.io-game',
     physics: {
         default: 'arcade',
-        arcade: { debug: true }
+        arcade: { debug: false }
     }
 };
 
