@@ -14,6 +14,9 @@ export class Engine{
             lifespan: -1,
             speed: 0
         });
+        this.largura = 128;
+        this.altura = 128;
+        this.rt = this.scene.make.renderTexture({ width: this.largura, height: this.altura }, true);
     }
     createScenario(){
         this.scene.add.image(0, 0, 'bg').setOrigin(0, 0).setDisplaySize(this.scene.cfg.graph.window.width, this.scene.cfg.graph.window.height);
@@ -30,45 +33,29 @@ export class Engine{
         this.createParticles(this.scene.cfg.numberOfParticles);
     }
     createObject(x,y,radius,coolDown,name,socketid,uid){
-        const obj1 = this.scene.physics.add.sprite(x, y, 'gem');
-        obj1.setScale(0.5);
-        obj1.setOrigin(0.5, 0.5);
-        obj1.setCollideWorldBounds(true);
-        obj1.setDisplaySize(radius , radius );
-        obj1.body.setSize(radius, radius,true);
-        let offsetX = (obj1.width - radius) / 2;
-        let offsetY = (obj1.height - radius) / 2;
-        obj1.body.setCircle(radius / 2);
-        obj1.body.onWorldBounds = true;
-        
-        obj1.coolDown = coolDown;
-        obj1.coolDownSpeed = 0;
-        obj1.radius = radius;
-        obj1.uid = uid;
-        obj1.socketid = socketid;
-        obj1.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
-        obj1.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
-        obj1.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', obj1.radius, 5).setOrigin(0.5,3);
-        return obj1;
+        const obj = this.scene.physics.add.sprite(x, y, 'gem');
+        obj.radius = radius;
+        let circle = (obj.radius * 100)/128;
+        this.updateSpriteSizeEat(obj,10);
+        obj.coolDown = coolDown;
+        obj.coolDownSpeed = 0;
+        obj.uid = uid;
+        obj.socketid = socketid;
+        obj.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
+        obj.bitmapText =  this.scene.add.bitmapText(x, y, 'azo-fire', name, 5).setOrigin(0.5,2);
+        obj.bitmapScore =  this.scene.add.bitmapText(x, y, 'azo-fire', obj.radius, 5).setOrigin(0.5);
+        return obj;
     }
     createObjectPlayer(x,y,radius,name,socketid,uid){
         const objP = this.scene.physics.add.sprite(x, y, 'gem');
-        objP.setCollideWorldBounds(true);
-        objP.setDisplaySize(radius, radius);
-        objP.body.setSize(radius, radius,true);
-        let offsetX = (objP.width - radius) / 2;
-        let offsetY = (objP.height - radius) / 2;
-        objP.body.setCircle(radius / 2,offsetX,offsetY);
-        objP.body.onWorldBounds = true;
-        
-        
-        objP.coolDownSpeed = 0;
         objP.radius = radius;
+        let circle = (objP.radius * 100)/128;
+        this.updateSpriteSizeEat(objP,10);
         objP.uid = uid;
         objP.socketid = socketid;
         objP.object = {socketid:socketid, uid: uid, radius: radius, position: { x: x, y: y } };
-        objP.bitmapText =  this.scene.add.bitmapText(x, y, 'atari', name, 5).setOrigin(0.5);
-        objP.bitmapScore =  this.scene.add.bitmapText(x, y, 'atari', objP.radius, 5).setOrigin(0.5,3);
+        objP.bitmapText =  this.scene.add.bitmapText(x, y, 'azo-fire', name, 5).setOrigin(0.5,2);
+        objP.bitmapScore =  this.scene.add.bitmapText(x, y, 'azo-fire', objP.radius, 5).setOrigin(0.5);
         return objP;
     }
     moveObjects(){
@@ -96,6 +83,7 @@ export class Engine{
     updateText(){
         if(this.scene.memory.objects.length > 0){
             for (const object of this.scene.memory.objects){
+                
                 object.object.x = object.x;
                 object.object.y = object.y;
                 object.object.radius = object.radius;
@@ -147,6 +135,7 @@ export class Engine{
             
         }
     }
+    
     zoom() {
         const objects = this.scene.memory.objects;
         if (objects.length === 0) {
@@ -295,12 +284,17 @@ export class Engine{
            
     }
     updateSpriteSizeEat(obj,duration){
-        obj.setDisplaySize(obj.radius, obj.radius);
         if(obj.body){
+            let circle = (obj.radius * 100)/128;
+            obj.setOrigin(0.5, 0.5);
+            obj.setCollideWorldBounds(true);
+            obj.setDisplaySize(obj.radius , obj.radius );
             obj.body.setSize(obj.radius, obj.radius,true);
-            let offsetX = (obj.width - obj.radius) / 2;
-            let offsetY = (obj.height - obj.radius) / 2;
-            obj.body.setCircle(obj.radius / 2,offsetX,offsetY);
+            let offsetX = (obj.width - obj.radius) / 4;
+            let offsetY = (obj.height - obj.radius) / 4;
+            obj.body.onWorldBounds = true;
+            obj.body.setCircle(obj.width / 2,0,0);
+            //this.updateTexture(obj);
         }
     }  
     createParticles(numberOfParticles) {
@@ -550,14 +544,31 @@ export class Engine{
         }
     }
 
-    createShootDivide(object,x, y, direction, speed = 150, lifespan = 800) {
+    createShootDivide(object,x, y, direction, speed = 150, lifespan = 1500) {
         object.body.setVelocity(direction.x * speed, direction.y * speed);
         this.scene.time.delayedCall(lifespan, () => {
                 if(object && object.body){
                     object.body.setVelocity(0);
+                    object.coolDownSpeed = 0;
                 }
         }, [], this);
         return object;
+    }
+
+    updateTexture(obj) {
+        const rt = this.rt;
+        rt.clear();
+        let largura = obj.radius / 100; 
+        let altura  = obj.radius / 100;
+        rt.setSize(largura, altura);
+        rt.drawFrame('gem', 0, 0, { frameWidth: largura, frameHeight: altura });
+        let bitmapText = this.scene.add.bitmapText(0, 0, 'atari', `Score: ${obj.radius}`, 32);
+        rt.draw(bitmapText, largura / 2 - bitmapText.width / 2, altura * 0.25 - bitmapText.height / 2);
+        bitmapText.destroy();
+        bitmapText = this.scene.add.bitmapText(0, 0, 'atari', this.scene.memory.name, 32);
+        rt.draw(bitmapText, this.largura / 2 - bitmapText.width / 2, altura * 0.75 - bitmapText.height / 2);
+        bitmapText.destroy();
+        obj.setTexture(rt);
     }
     
 }

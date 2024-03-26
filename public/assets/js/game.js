@@ -13,9 +13,11 @@ class Game extends Phaser.Scene{
     }
 
     preload (){
-        this.load.image('gem','assets/img/obj/gem2.png');
+        this.load.image('gem','assets/img/obj/gem.png');
         this.load.image('bg', 'assets/img/bg/bg.jpg');
         this.load.bitmapFont('atari', 'assets/engine/fonts/bitmap/atari-smooth.png', 'assets/engine/fonts/bitmap/atari-smooth.xml');
+        this.load.bitmapFont('azo-fire', 'assets/engine/fonts/bitmap/azo-fire.png', 'assets/engine/fonts/bitmap/azo-fire.xml');
+        
         this.load.atlas('flares', 'assets/engine/particles/flares.png', 'assets/engine/particles/flares.json');
         this.load.spritesheet('boom', 'assets/engine/sprites/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
         
@@ -39,7 +41,7 @@ class Game extends Phaser.Scene{
             maxobject:10,
             numberOfParticles:250,
             minRadiusSplit:20,
-            speed:{min:10, max:50, factor:1000},
+            speed:{min:10, max:80, factor:1000},
             updateServerInterval:2000,
             sizeShoot:5
         }
